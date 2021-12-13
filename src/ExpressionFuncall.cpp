@@ -178,7 +178,7 @@ ExpressionFuncall::get_dereferenced_ptrs(void) const
 	return refs;
 }
 
-// find pointers used in the expression, recursively go into callee if this is a call
+// find pointers loaded in the expression, recursively go into callee if this is a call
 void
 ExpressionFuncall::get_referenced_ptrs(std::vector<const Variable*>& ptrs) const
 {

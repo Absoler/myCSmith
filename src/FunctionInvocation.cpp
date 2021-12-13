@@ -121,7 +121,7 @@ FunctionInvocation::make_random(bool is_std_func,
 }
 
 /*
- * TODO: FIX!  This is a bogus constructor, used only by the `OutputMain'.
+ * TODO: FIX!  This is a bogus constructor, loaded only by the `OutputMain'.
  * The problem is, there is no representation for the calling function,
  * so we "just use" `*target'.  Bah!
  */

@@ -154,7 +154,7 @@ FactMgr* get_fact_mgr(const CGContext* cg);
 const Function* find_function_by_name(const string& name);
 int find_function_in_set(const vector<const Function*>& set, const Function* f);
 const Block* find_blk_for_var(const Variable* v);
-
+void print_funcs(); //zkb
 ///////////////////////////////////////////////////////////////////////////////
 
 #endif // FUNCTION_H

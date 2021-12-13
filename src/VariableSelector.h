@@ -60,6 +60,7 @@ class VariableSelector
 {
 	friend class ArrayVariable;
 public:
+    static void set_used(const Variable* var); //zkb
 	VariableSelector(void) {};
 	static Variable* new_variable(const std::string &name, const Type *type, const Expression* init, const CVQualifiers* qfer);
 	// ISSUE: use it only when you want to create a static variable

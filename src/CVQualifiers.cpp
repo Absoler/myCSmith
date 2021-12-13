@@ -383,7 +383,7 @@ CVQualifiers::random_qualifiers(const Type* t)
 
 /*
  * be careful to use it because it will generate volatile without knowing the context.
- * Only used to generate qulifiers for struct/unions
+ * Only loaded to generate qulifiers for struct/unions
  */
 CVQualifiers
 CVQualifiers::random_qualifiers(const Type* t, unsigned int const_prob, unsigned int volatile_prob)
@@ -664,7 +664,7 @@ CVQualifiers::restrict(Effect::Access access, const CGContext& cg_context)
 }
 
 /*
- * For now, only used to generate all qualifiers for struct fields.
+ * For now, only loaded to generate all qualifiers for struct fields.
  * Also, since we don't support fields with pointer types, we only
  * enumerate the first level of qualifiers.
  */

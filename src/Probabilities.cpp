@@ -65,7 +65,7 @@ ProbabilityFilter::~ProbabilityFilter()
 
 }
 
-// only used it for equivalent group
+// only loaded it for equivalent group
 bool
 ProbabilityFilter::filter(int v) const
 {

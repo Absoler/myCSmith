@@ -107,7 +107,7 @@ Reducer::configure(void)
 		if (line.find("focus variable") == 0) {
 			getline(conf, line);
 			StringUtils::chop(line);
-			// make sure the focus var is marked as used var
+			// make sure the focus var is marked as loaded var
 			const Variable* key = VariableSelector::find_var_by_name(line);
 			if (key == NULL) {
 				// it's possible an array variable that is not specifically itemized in the
@@ -133,7 +133,7 @@ Reducer::configure(void)
 		else if (line.find("crc lines") == 0) {
 			getline(conf, line);
 			StringUtils::chop(line);
-			// find the global variables in CRC statements, and mark them as used
+			// find the global variables in CRC statements, and mark them as loaded
 			vector<string> strs;
 			StringUtils::split_string(line, strs, "(),[.");
 			for (size_t i=0; i<strs.size(); i++) {
@@ -148,7 +148,7 @@ Reducer::configure(void)
 		else if (line.find("keep variable") == 0) {
 			getline(conf, line);
 			StringUtils::chop(line);
-			// make sure the focus var is marked as used var
+			// make sure the focus var is marked as loaded var
 			vector<string> vnames;
 			StringUtils::split_string(line, vnames, ", ");
 			for (size_t i=0; i<vnames.size(); i++) {
@@ -441,7 +441,7 @@ Reducer::delete_stms_after(const Statement* stm, bool include_parent_blks)
 }
 
 // find local variables that have to be lifted to global, most likely because
-// they are used via pointer in a callee function at the bottom of a call chain
+// they are loaded via pointer in a callee function at the bottom of a call chain
 int
 Reducer::find_local_vars_to_lift(vector<const Variable*>& vars)
 {
@@ -551,7 +551,7 @@ Reducer::get_used_vars_and_funcs_and_labels(const FunctionInvocation* fi, vector
 				}
 				return;
 			}
-			// recursively find used vars and functions
+			// recursively find loaded vars and functions
 			const Function* f = call->get_func();
 
 			get_used_vars_and_funcs_and_labels(f->body, vars, funcs, labels);
@@ -840,7 +840,7 @@ Reducer::build_left_right_binary_trees(vector<const FunctionInvocationBinary*>& 
 }
 
 /*
- * find all the variables and functions used in this statement
+ * find all the variables and functions loaded in this statement
  */
 void
 Reducer::get_used_vars_and_funcs_and_labels(const Statement* stm, vector<const Variable*>& vars, vector<const Function*>& funcs, vector<string>& labels)
@@ -880,12 +880,12 @@ Reducer::get_used_vars_and_funcs_and_labels(const Statement* stm, vector<const V
 			}
 		}
 	}
-	// include used variables from pre-statement assignments
+	// include loaded variables from pre-statement assignments
 	if (map_pre_stm_assigns.find(stm) != map_pre_stm_assigns.end()) {
 		const string& assigns = map_pre_stm_assigns[stm];
 		add_variables_to_set(vars, map_str_effects[assigns]);
 	}
-	// used replacement for replaced statements
+	// loaded replacement for replaced statements
 	bool must_visit = std::find(must_use_var_stms.begin(), must_use_var_stms.end(), stm) != must_use_var_stms.end();
 	if (!must_visit && replaced_stms.find(stm) != replaced_stms.end()) {
 		get_used_vars_and_funcs_and_labels(replaced_stms[stm], vars, funcs, labels);
@@ -1240,7 +1240,7 @@ Reducer::find_used_vars(string assigns)
 		assert(v);
 		vars.push_back(v);
 
-		// if value is the address of a variable, mark it as used
+		// if value is the address of a variable, mark it as loaded
 		string value = values[i];
 		v = find_addressed_var(value);
 		if (v) {

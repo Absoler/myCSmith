@@ -566,13 +566,12 @@ StatementAssign::OutputAsExpr(std::ostream &out) const
 				if (CGOptions::math_notmp()) {
 					out << tmp_var1 << ", ";
 				}
-
 				lhs.Output(out);
 				out << ", ";
 				if (CGOptions::math_notmp()) {
 					out << tmp_var2 << ", ";
 				}
-
+//                out<<"zkb "<<tmp_var1<<" "<<tmp_var2<<" zkb";
 				if (op == eAddAssign ||
 					op == eSubAssign) {
 					expr.Output(out);

@@ -1,4 +1,4 @@
-// -*- mode: C++ -*-
+ // -*- mode: C++ -*-
 //
 // Copyright (c) 2007, 2008, 2009, 2010, 2011, 2013, 2014, 2015, 2017 The University of Utah
 // All rights reserved.
@@ -429,11 +429,11 @@ Variable::Variable(const std::string &name, const Type *type,
 				   const vector<bool>& isConsts, const vector<bool>& isVolatiles,
 				   bool isAuto, bool isStatic, bool isRegister, bool isBitfield, const Variable* isFieldVarOf)
 	: name(name), type(type),
-	  init(0),
-	  isAuto(isAuto), isStatic(isStatic), isRegister(isRegister),
-	  isBitfield_(isBitfield), isAddrTaken(false), isAccessOnce(false),
-	  field_var_of(isFieldVarOf), isArray(false),
-	  qfer(isConsts, isVolatiles)
+      init(0),
+      isAuto(isAuto), isStatic(isStatic), isRegister(isRegister),
+      isBitfield_(isBitfield), isAddrTaken(false), isAccessOnce(false),
+      field_var_of(isFieldVarOf), isArray(false),
+      qfer(isConsts, isVolatiles), loaded(false)
 {
 	// nothing else to do
 }
@@ -443,23 +443,23 @@ Variable::Variable(const std::string &name, const Type *type,
  */
 Variable::Variable(const std::string &name, const Type *type, const Expression* init, const CVQualifiers* qfer)
 	: name(name), type(type),
-	  init(init),
-	  isAuto(false), isStatic(false), isRegister(false), isBitfield_(false),
-	  isAddrTaken(false), isAccessOnce(false),
-	  field_var_of(0), isArray(false),
-	  qfer(*qfer)
+      init(init),
+      isAuto(false), isStatic(false), isRegister(false), isBitfield_(false),
+      isAddrTaken(false), isAccessOnce(false),
+      field_var_of(0), isArray(false),
+      qfer(*qfer), loaded(false)
 {
 	// nothing else to do
 }
 
 Variable::Variable(const std::string &name, const Type *type, const Expression* init, const CVQualifiers* qfer, const Variable* isFieldVarOf, bool isArray)
 	: name(name), type(type),
-	  init(init),
-	  isAuto(false), isStatic(false), isRegister(false), isBitfield_(false),
-	  isAddrTaken(false), isAccessOnce(false),
-	  field_var_of(isFieldVarOf),
-	  isArray(isArray),
-	  qfer(*qfer)
+      init(init),
+      isAuto(false), isStatic(false), isRegister(false), isBitfield_(false),
+      isAddrTaken(false), isAccessOnce(false),
+      field_var_of(isFieldVarOf),
+      isArray(isArray),
+      qfer(*qfer), loaded(false)
 {
 	// nothing else to do
 }

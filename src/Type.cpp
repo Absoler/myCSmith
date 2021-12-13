@@ -67,7 +67,7 @@ const Type *Type::simple_types[MAX_SIMPLE_TYPES];
 Type *Type::void_type = NULL;
 
 // ---------------------------------------------------------------------
-// List of all types used in the program
+// List of all types loaded in the program
 static vector<Type *> AllTypes;
 static vector<Type *> derived_types;
 
@@ -285,7 +285,7 @@ Type::Type(eSimpleType simple_type) :
 	eType(eSimple),
 	ptr_type(0),
 	simple_type(simple_type),
-	sid(0), // not used for simple types
+	sid(0), // not loaded for simple types
 	used(false),
 	printed(false),
 	packed_(false),
@@ -436,7 +436,7 @@ Type::get_type_from_string(const string &type_string)
 }
 
 // ---------------------------------------------------------------------
-/* return the most commonly used type - integer
+/* return the most commonly loaded type - integer
  *************************************************************/
 const Type *
 get_int_type()

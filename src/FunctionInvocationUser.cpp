@@ -284,7 +284,7 @@ FunctionInvocationUser::build_invocation(Function *target, CGContext &cg_context
 	}
 
 	// no need to validate func_1 as it has no parameters and it's called only once
-	// in addition, the hack (calling func_1 in a func_1 context) we used would
+	// in addition, the hack (calling func_1 in a func_1 context) we loaded would
 	// ruin DFA
 	failed = false;
 	if (target != GetFirstFunction() && (target->fact_changed || target->union_field_read || target->is_pointer_referenced())) {

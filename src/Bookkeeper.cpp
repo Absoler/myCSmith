@@ -526,8 +526,8 @@ void
 Bookkeeper::output_var_freshness(std::ostream &out)
 {
 	int total = use_new_var_cnt + use_old_var_cnt;
-	formated_outputf(out, "percentage a fresh-made variable is used: ", use_new_var_cnt * 100.0 / total);
-	formated_outputf(out, "percentage an existing variable is used: ", use_old_var_cnt * 100.0 / total);
+	formated_outputf(out, "percentage a fresh-made variable is loaded: ", use_new_var_cnt * 100.0 / total);
+	formated_outputf(out, "percentage an existing variable is loaded: ", use_old_var_cnt * 100.0 / total);
 }
 
 void
@@ -543,6 +543,7 @@ Bookkeeper::output_counters(std::ostream &out, const char* prefix_msg,
 }
 
 void incr_counter(std::vector<int>& counters, int pos)
+//increase some counter by 1
 {
 	size_t len = counters.size();
 	size_t index = (size_t)pos;

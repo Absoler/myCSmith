@@ -102,14 +102,18 @@ ExpressionVariable::make_random(CGContext &cg_context, const Type* type, const C
 			if (tmp.visit_facts(fm->global_facts, cg_context)) {
 				ev = tmp.get_indirect_level() == 0 ? new ExpressionVariable(*var) : new ExpressionVariable(*var, type);
 				cg_context.curr_blk = cg_context.get_current_block();
-				break;
+                VariableSelector::set_used(var);    //zkb
+                if(ev->get_indirect_level()!=0){
+                    printf("%d %s\n",ev->get_indirect_level(),ev->get_var()->get_actual_name().c_str());
+                }
+				break;  //success
 			}
 			else {
 				cg_context.reset_effect_accum(eff_accum);
 				cg_context.reset_effect_stm(eff_stmt);
 			}
 		}
-		dummy.push_back(var);
+		dummy.push_back(var);   //$invalid vars
 	} while (true);
 
 	// statistics

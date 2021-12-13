@@ -72,7 +72,7 @@ public:
 
 	void find_must_use_arrays(std::vector<const Variable*>& avs) const;
 
-	// The set of variables that should not be read/written. Currently not used
+	// The set of variables that should not be read/written. Currently not loaded
 	// could be useful for generating multi-thread functions with no data racing
 	const VariableSet &no_read_vars;
 	const VariableSet &no_write_vars;
@@ -165,7 +165,7 @@ public: // XXX
 	// induction variables for loops, with each IV controls one nested loop
 	map<const Variable*, unsigned int> iv_bounds;
 
-	const Expression* curr_rhs;   // only used in the context of LHS
+	const Expression* curr_rhs;   // only loaded in the context of LHS
 
 private:
 	const Effect &effect_context;

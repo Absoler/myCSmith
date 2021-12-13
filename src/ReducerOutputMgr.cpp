@@ -136,7 +136,7 @@ ReducerOutputMgr::output_vars(const vector<Variable*> &vars, std::ostream &out, 
 	size_t i;
 	int dimen = 0;
 	vector<const ArrayVariable*> avs;
-	// print used vars, and find the max dimension of all array variables
+	// print loaded vars, and find the max dimension of all array variables
 	for (i=0; i<vars.size(); i++) {
 		const Variable* v = vars[i];
 		if (!reducer->is_var_used(v)) continue;
@@ -248,7 +248,7 @@ ReducerOutputMgr::output_func_header(const Function* f, std::ostream& out)
 void
 ReducerOutputMgr::output_crc_lines(std::ostream& out)
 {
-	// declare loop variables if they are used in crc lines
+	// declare loop variables if they are loaded in crc lines
 	for (char c = 'i'; c <= 'z'; c++) {
 		string pattern = string("; ") + c + "++)";
 		if (reducer->crc_lines.find(pattern) != string::npos) {
@@ -994,7 +994,7 @@ ReducerOutputMgr::Output()
 	// configure reducer
 	reducer->configure();
 
-	// find all the functions and variables that are used after reductions
+	// find all the functions and variables that are loaded after reductions
 	const Function* main = reducer->main;
 	reducer->get_used_vars_and_funcs_and_labels(main->body, reducer->used_vars, reducer->used_funcs, reducer->used_labels);
 	reducer->expand_used_vars();

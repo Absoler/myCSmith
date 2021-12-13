@@ -137,7 +137,7 @@ private:
 	// the real rhs canonized from compound operators, for example rhs for "i += 1" is "i + 1"
 	const Expression* rhs;
 	const SafeOpFlags *op_flags;
-	// used for AssignAdd etc;
+	// loaded for AssignAdd etc;
 	std::string tmp_var1;
 	std::string tmp_var2;
 

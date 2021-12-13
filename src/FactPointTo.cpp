@@ -462,7 +462,7 @@ FactPointTo::is_valid_ptr(const char* name, const std::vector<const Fact*>& fact
 /*
  *  validate the pointer with some chance of overlooking safety check
  *  this can create some null/dangling pointer dereferences, which
- *  are used to test static analyzers (not compilers)
+ *  are loaded to test static analyzers (not compilers)
  */
 int
 FactPointTo::opportunistic_validate(const Variable* var, const Type* type, const std::vector<const Fact*>& facts)

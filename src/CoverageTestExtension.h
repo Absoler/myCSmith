@@ -66,7 +66,7 @@ private:
 
 	int inputs_size_;
 
-	// used for tmp vars
+	// loaded for tmp vars
 	std::vector<ExtensionValue*> values_;
 
 	// hold actual values passed to func_1

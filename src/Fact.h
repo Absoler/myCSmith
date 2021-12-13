@@ -101,7 +101,7 @@ public:
 	enum eFactCategory eCat;
 
 protected:
-	// keep track all created facts. used for releasing memory in doFinalization
+	// keep track all created facts. loaded for releasing memory in doFinalization
 	static std::vector<Fact*> facts_;
 };
 

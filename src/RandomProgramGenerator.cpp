@@ -42,7 +42,7 @@
 /*
 Random C/C++ Program Generator
 ------------------------------
-1) Create a set of random types to be used throughout the program
+1) Create a set of random types to be loaded throughout the program
 2) Create the main func.
 3) Generate a random block of statements with maximum control & expression nesting depths.
 4) If new functions were defined in #3, then loop back to fill in its body.
@@ -221,7 +221,7 @@ static void print_advanced_help()
 	// dfs-exhaustive mode options
 	cout << "  --dfs-exhaustive: enable depth first exhaustive random generation (disabled by default)." << endl << endl;
 	cout << "  --expand-struct: enable the expansion of struct in the exhaustive mode. ";
-	cout << "Only works in the exhaustive mode and cannot used with --no-structs." << endl << endl;
+	cout << "Only works in the exhaustive mode and cannot loaded with --no-structs." << endl << endl;
 
 	cout << "  --compact-output: print generated programs in compact way. ";
 	cout << "Only works in the exhaustive mode." << endl << endl;
@@ -253,17 +253,17 @@ static void print_advanced_help()
 	// coverage test options
 	cout << "  --coverage-test: enable coverage-test extension" << endl << endl;
 	cout << "  --coverage-test-size <num>: specify size (default 500) of the array generated to test coverage. ";
-	cout << "Can only be used with --coverage-test." << endl << endl;
+	cout << "Can only be loaded with --coverage-test." << endl << endl;
 
 	cout << "  --func1_max_params <num>: specify the number of symbolic variables passed to func_1 (default 3). ";
-	cout << "Only used when --splat | --crest | --klee | --coverage-test is enabled." << endl << endl;
+	cout << "Only loaded when --splat | --crest | --klee | --coverage-test is enabled." << endl << endl;
 
 	// struct/union related options
 	cout << "  --fixed-struct-fields: fix the size of struct fields to max-struct-fields (default 10)." << endl << endl;
 	cout << "  --return-structs | --no-return-structs: enable | disable return structs from a function (enabled by default)." << endl << endl;
-	cout << "  --arg-structs | --no-arg-structs: enable | disable structs being used as args (enabled by default)." << endl << endl;
+	cout << "  --arg-structs | --no-arg-structs: enable | disable structs being loaded as args (enabled by default)." << endl << endl;
 	cout << "  --return-unions | --no-return-unions: enable | disable return unions from a function (enabled by default)." << endl << endl;
-	cout << "  --arg-unions | --no-arg-unions: enable | disable unions being used as args (enabled by default)." << endl << endl;
+	cout << "  --arg-unions | --no-arg-unions: enable | disable unions being loaded as args (enabled by default)." << endl << endl;
 	cout << "  --take-union-field-addr | --take-no-union-field-addr: allow | disallow addresses of union fields to be taken (allowed by default)." << endl << endl;
 	cout << "  --vol-struct-union-fields | --no-vol-struct-union-fields: enable | disable volatile struct/union fields (enabled by default)" << endl << endl;
 	cout << "  --const-struct-union-fields | --no-const-struct-union-fields: enable | disable const struct/union fields (enabled by default)" << endl << endl;
@@ -318,7 +318,7 @@ static void print_advanced_help()
 
 	cout << "  --return-dead-pointer | --no-return-dead-pointer: allow | disallow functions from returning dangling pointers (disallowed by default)." << endl << endl;
 
-	cout <<	"  --identify-wrappers: assign ids to used safe math wrappers." << endl << endl;
+	cout <<	"  --identify-wrappers: assign ids to loaded safe math wrappers." << endl << endl;
 
 	cout << "  --safe-math-wrappers <id1,id2...>: specifiy ids of wrapper functions that are necessary to avoid undefined behaviors, use 0 to specify none." << endl << endl;
 
@@ -335,7 +335,7 @@ static void print_advanced_help()
 
 	cout << "  --max-struct-nested-level: controls the max depth of nested structs (default is 3)." << endl << endl;
 	cout << "  --no-hash-value-printf: do not emit printf on the index of an array" << endl << endl;
-	cout << "  --no-signed-char-index: do not allow a var of type char to be used as array index" << endl << endl;
+	cout << "  --no-signed-char-index: do not allow a var of type char to be loaded as array index" << endl << endl;
 	cout << "  --strict-float: do not allow assignments between floats and integers" << endl << endl;
 }
 

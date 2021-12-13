@@ -77,6 +77,12 @@ static long cur_func_idx;				// Index into FuncList that we are currently workin
 static bool param_first=true;			// Flag to track output of commas
 static int builtin_functions_cnt;
 
+void print_funcs(){
+    for(int i=0;i<FuncList.size();i++){
+        printf("%s\n",FuncList[i]->name.c_str());
+    }
+}
+
 /*
  * find FactMgr for a function
  */
@@ -466,19 +472,18 @@ Function::make_first(void)
 	// create a fact manager for this function, with empty global facts
 	FactMgr* fm = new FactMgr(f);
 	FMList.push_back(fm);
-
 	ExtensionMgr::GenerateFirstParameterList(*f);
-
+	
 	// No Parameter List
 	f->GenerateBody(CGContext::get_empty_context());
+	
 	if (CGOptions::inline_function() && rnd_flipcoin(InlineFunctionProb))
 		f->is_inlined = true;
 	fm->setup_in_out_maps(true);
-
+	
 	// update global facts to merged facts at all possible function exits
 	fm->global_facts = fm->map_facts_out[f->body];
 	f->body->add_back_return_facts(fm, fm->global_facts);
-
 	// collect info about global dangling pointers
 	fm->find_dangling_global_ptrs(f);
 	return f;
@@ -632,7 +637,6 @@ Function::GenerateBody(const CGContext &prev_context)
 		cerr << "warning: ignoring attempt to regenerate func" << endl;
 		return;
 	}
-
 	build_state = BUILDING;
 	Effect effect_accum;
 	CGContext cg_context(this, prev_context.get_effect_context(), &effect_accum);
@@ -643,14 +647,16 @@ Function::GenerateBody(const CGContext &prev_context)
 			fm->global_facts.push_back(FactPointTo::make_fact(param[i], FactPointTo::tbd_ptr));
 		}
 	}
+	printf("\nFunction::GenerateBody**********\n");
 	// Fill in the Function body.
-	if (is_builtin)
+	if (is_builtin){
 		body = Block::make_dummy_block(cg_context);
+	}
 	else
 		body = Block::make_random(cg_context);
 	ERROR_RETURN();
 	body->set_depth_protect(true);
-
+	printf("\n************\n", FuncListSize());
 	// compute the pointers that are statically referenced in the function
 	// including ones referenced by its callees
 	body->get_referenced_ptrs(referenced_ptrs);
@@ -659,7 +665,6 @@ Function::GenerateBody(const CGContext &prev_context)
 	// is just the effect on globals.
 	//effect.add_external_effect(*cg_context.get_effect_accum());
 	feffect.add_external_effect(fm->map_stm_effect[body]);
-
 	make_return_const();
 	ERROR_RETURN();
 
@@ -808,7 +813,6 @@ GenerateFunctions(void)
 	// Create a basic first function, then generate a random graph from there.
 	/* Function *first = */ Function::make_first();
 	ERROR_RETURN();
-
 	// -----------------
 	// Create body of each function, continue until no new functions are created.
 	for (cur_func_idx = 0; cur_func_idx < FuncListSize(); cur_func_idx++) {

@@ -45,6 +45,8 @@
 #include "CGOptions.h"
 #include "SafeOpFlags.h"
 #include "ExtensionMgr.h"
+#include<stdio.h>//$
+#include "Function.h"//zkb
 
 DefaultProgramGenerator::DefaultProgramGenerator(int argc, char *argv[], unsigned long seed)
 	: argc_(argc),
@@ -91,9 +93,11 @@ void
 DefaultProgramGenerator::goGenerator()
 {
 	output_mgr_->OutputHeader(argc_, argv_, seed_);
-
+	
 	GenerateAllTypes();
+	
 	GenerateFunctions();
+	print_funcs();
 	output_mgr_->Output();
 	if (CGOptions::identify_wrappers()) {
 		ofstream ofile;

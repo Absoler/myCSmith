@@ -140,7 +140,7 @@ public:
 	static std::vector<Fact*> meta_facts;
 
 	// maps to track facts and effects at historical generation points.
-	// they are used for bypassing analyzing statements if possible
+	// they are loaded for bypassing analyzing statements if possible
 	std::map<const Statement*, FactVec> map_facts_in;
 	std::map<const Statement*, FactVec> map_facts_out;
 	std::map<const Statement*, std::vector<Fact*> > map_facts_in_final;

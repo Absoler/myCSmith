@@ -256,7 +256,7 @@ CGOptions::set_default_settings(void)
 	compound_assignment(true);
 	math64(true);
 	inline_function(false);
-	math_notmp(false);
+	math_notmp(false);   //zkb
 	longlong(true);
 	int8(true);
 	uint8(true);
@@ -418,7 +418,7 @@ bool CGOptions::has_random_based_conflict(void)
 	else {
 		if (CGOptions::sequence_name_prefix()) {
 			conflict_msg_ = "--sequence-name-prefix option can only be \
-					used with --dfs-exhaustive";
+					loaded with --dfs-exhaustive";
 			rv = true;
 		}
 	}
@@ -446,7 +446,7 @@ bool CGOptions::resolve_exhaustive_options()
 	}
 
 	if (!CGOptions::use_struct() && CGOptions::expand_struct()) {
-		conflict_msg_ = "expand-struct cannot be used with --no-struct";
+		conflict_msg_ = "expand-struct cannot be loaded with --no-struct";
 		return true;
 	}
 

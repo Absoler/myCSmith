@@ -145,7 +145,6 @@ Block::make_random(CGContext &cg_context, bool looping)
 	FactMgr* fm = get_fact_mgr_for_func(curr_func);
 	fm->set_fact_in(b, fm->global_facts);
 	Effect pre_effect = cg_context.get_accum_effect();
-
 	unsigned int max = BlockProbability(*b);
 	if (Error::get_error() != SUCCESS) {
 		curr_func->stack.pop_back();
@@ -165,7 +164,6 @@ Block::make_random(CGContext &cg_context, bool looping)
 			break;
 		}
 	}
-
 	if (Error::get_error() != SUCCESS) {
 		curr_func->stack.pop_back();
 		delete b;
@@ -185,14 +183,15 @@ Block::make_random(CGContext &cg_context, bool looping)
 		delete b;
 		return NULL;
 	}
-
 	curr_func->stack.pop_back();
 	if (Error::get_error() != SUCCESS) {
 		//curr_func->stack.pop_back();
 		delete b;
 		return NULL;
 	}
-
+	// printf("---------------\n");
+	// printf(" %d\n %d\n", FuncListSize(),b->block_size());
+	// printf("---------------\n\n");
 	// ISSUE: in the exhaustive mode, do we need a return statement here
 	// if the last statement is not?
 	Error::set_error(SUCCESS);
@@ -434,6 +433,7 @@ Block::append_return_stmt(CGContext& cg_context)
 	stms.push_back(sr);
 	fm->makeup_new_var_facts(pre_facts, fm->global_facts);
 	bool visited = sr->visit_facts(fm->global_facts, cg_context);
+
 	assert(visited);
 
 	fm->set_fact_in(sr, pre_facts);

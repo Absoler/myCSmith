@@ -296,7 +296,7 @@ public:
 private:
 	const std::string sname_;
 
-	// the name used by csmith internally
+	// the name loaded by csmith internally
 	const ProbName pname_;
 
 	// default probability
@@ -351,7 +351,7 @@ private:
 
 	const std::string sname_;
 
-	// the name used by csmith internally
+	// the name loaded by csmith internally
 	// const ProbName pname_;
 
 	std::map<ProbName, SingleProbElem*> probs_;
