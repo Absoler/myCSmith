@@ -323,6 +323,7 @@ FunctionInvocationBinary::Output(std::ostream &out) const
 {
 //    printf("%s %d %s\n",tmp_var1.c_str(),eFunc,tmp_var2.c_str());   //zkb
 	bool need_cast = false;
+	out << "(";
 //	out << "(zkb";
 	// special case for mutated array subscripts, see ArrayVariable::rnd_mutate
 	// the rational is we don't need overflow check for this addition because

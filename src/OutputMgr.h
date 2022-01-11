@@ -90,6 +90,9 @@ protected:
 
 	void OutputMain(std::ostream &out);
 
+	void Output_getInfoFunc(std::ostream &out);	//for pintool
+	void Output_extraVariables(std::ostream &out);	//for pintool
+	void Output_setInfoFunc(std::ostream &out);
 private:
 
 	static bool is_monitored_func(void);

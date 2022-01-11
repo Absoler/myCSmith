@@ -101,6 +101,42 @@ OutputMgr::~OutputMgr()
 
 }
 
+// void 
+// OutputMgr::Output_getInfoFunc(std::ostream &out){
+// 	out<<"void getInfo(unsigned long addr, unsigned int size){"<<endl;
+// 	out<<"    side=(side+addr%1000+size%1000)%1000;"<<endl;
+// 	out<<"}"<<endl;
+// }
+void 
+OutputMgr::Output_getInfoFunc(std::ostream &out){
+	out<<"void getInfo(unsigned long addr, int cnt){"<<endl;
+	out<<"    side=(side+(addr+cnt)%1000)%1000;"<<endl;
+	out<<"}"<<endl;
+}
+
+void
+OutputMgr::Output_extraVariables(std::ostream &out){
+	out<<"int side=0;"<<endl;	//create side-effect for target behaviors
+
+	out<<"struct VarInfo{"<<endl;
+	out<<"	unsigned long addr;"<<endl;
+	out<<"	unsigned int size;"<<endl;
+	out<<"	char name[10];"<<endl;
+	out<<"}varInfos[1000];"<<endl;
+	out<<"int global_cnt=0;"<<endl;
+
+}
+
+void
+OutputMgr::Output_setInfoFunc(std::ostream &out){
+	out<<"void setInfo(unsigned long addr, unsigned int size, char* name){"<<endl;
+	out<<"	varInfos[global_cnt].addr=addr;"<<endl;
+    out<<"	varInfos[global_cnt].size=size;"<<endl;
+	out<<"	strcpy(varInfos[global_cnt].name,name);"<<endl;
+    out<<"	global_cnt++;"<<endl;
+    out<<"}"<<endl;
+}
+
 void
 OutputMgr::OutputMain(std::ostream &out)
 {
@@ -117,6 +153,18 @@ OutputMgr::OutputMain(std::ostream &out)
 
 	// output initializers for global array variables
 	OutputArrayInitializers(*VariableSelector::GetGlobalVariables(), out, 1);
+
+	// in case of target functions are inlined
+	vector<string> useFuncs=generate_useFuncs();
+	for(string useStmt:useFuncs){
+		out<<useStmt<<endl;
+	}
+	vector<string> globalInfos=VariableSelector::generate_globalInfos();
+	for(string info:globalInfos){
+		out<<info<<endl;
+	}
+	out<<"	getInfo(varInfos, global_cnt);"<<endl;	//transfer the address of varInfos to pintool
+	out<<"	printf(\"%d\\n\",side);"<<endl;	//create side effect
 
 	if (CGOptions::blind_check_global()) {
 		ExtensionMgr::OutputFirstFunInvocation(out, invoke);

@@ -40,6 +40,7 @@
 #include "VariableSelector.h"
 #include <cassert>
 #include <map>
+#include <set>
 
 #include "Common.h"
 #include "Block.h"
@@ -377,16 +378,67 @@ VariableSelector::choose_visible_read_var(const Block *b, vector<const Variable 
 
 //zkb
 void VariableSelector::set_used(const Variable *var) {
-    int cnt=0;
-    for (Variable *v: GlobalList) {
-        if (v->name == var->name) {
-            cnt++;
-            v->loaded = true;
-            if(cnt>1){
-//                printf("%s\n",v->name.c_str());
+    //find the used target in GlobalList by name, and set its loaded = true
+    if(var->is_union_field()){
+        //if a field of union is loaded, it's equivalent to the union is taken
+        //for now, the depth of struct/union is only 1
+        string containerName=var->field_var_of->name;
+        for(Variable *v: GlobalList){
+            if(v->type->eType==eUnion&&v->name==containerName){
+                v->loaded=true;
+            }
+        }
+    }else if(var->is_field_var()){
+        string containerName=var->field_var_of->name;
+        int id=var->get_field_id();
+        for(Variable *v: GlobalList){
+            if(v->name==containerName){
+                v->field_vars[id]->loaded=true;
+            }
+        }
+    }else{
+        if(!var->is_global()){
+            return;
+        }
+        for (Variable *v: GlobalList) {
+            if (v->name == var->name) {
+                v->loaded = true;
+                if(!var->loaded){
+                    // printf("1");
+                    //shouldn't happen
+                }
             }
         }
     }
+}
+vector<string> VariableSelector::generate_globalInfos(){
+    std::set<string> names;
+    for(Variable *v:GlobalList){
+        names.insert(v->name);
+    }
+    std::vector<string> infos;
+    for(string name:names){
+        // infos.push_back("    getInfo((unsigned long)(&"+name+"),sizeof("+name+"));");
+        infos.push_back("    setInfo((unsigned long)(&"+name+"),sizeof("+name+"),\""+name+"\");");
+    }
+    return infos;
+}
+
+/*
+If current var is a field of a struct/union, then it can't be read if its container has been read.
+For union, if a different member has been read, this field could have been accessed too. 
+*/
+bool
+VariableSelector::is_container_used(const Variable* &field, const vector<Variable*> &vars){
+    if(field->is_field_var()){
+        string containerName=field->field_var_of->name;
+        for(Variable* var:vars){
+            if(var->is_global() && var->name==containerName && var->loaded){
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 // --------------------------------------------------------------
@@ -426,13 +478,26 @@ VariableSelector::choose_var(vector<Variable *> vars,
     // check availability of volatiles
     has_eligible_volatile_var(vars, type, qfer, access, cg_context);
 
+    //prepare for deref-check
+    FactMgr *fm=get_fact_mgr(&cg_context);
+    vector<const Variable*> pointee_vars;
+    if(type->eType==eUnion){
+        printf("1");
+    }
+
     for (i = vars.begin(); i != vars.end(); ++i) {
         // skip any type mismatched var
         if (no_bitfield && (*i)->isBitfield_)
             continue;
+        // if(type->get_indirect_level()-(*i)->type->get_indirect_level()>0){
+        //     type->get_indirect_level();
+        // }
         if (type && !type->match((*i)->type, mt)) {
             continue;
         }
+        // if(type->get_indirect_level()-(*i)->type->get_indirect_level()>0&&type->match((*i)->type, mt)){
+        //     type->match((*i)->type, mt);
+        // }
         if (qfer && !qfer->match_indirect((*i)->qfer)) {
             continue;
         }
@@ -441,10 +506,65 @@ VariableSelector::choose_var(vector<Variable *> vars,
             continue;
         }
         //zkb
+        //check normal integer
         if ((*i)->is_global() && access == Effect::READ && (*i)->loaded) {
             continue;
         }
+
+
         int deref_level = (*i)->type->get_indirect_level() - type->get_indirect_level();
+        //-1 means ref(&), >0 means deref(*)
+        vector<const Variable*> targets;
+        if(access==Effect::READ){
+            targets=FactPointTo::get_pointees_under_level((*i),deref_level,fm->global_facts);
+        }else if(access==Effect::WRITE){
+            targets=FactPointTo::get_pointees_under_level((*i),deref_level-1,fm->global_facts);
+        }
+        //targets contain all accessed vars if deref exists
+        bool loaded=false;
+        for(const Variable* var:targets){
+            if(var->is_global()&&var->loaded){
+                loaded=true;
+            }
+            if(var->is_global()&&var->is_aggregate()){
+                //var is struct/union
+                for(Variable* field:var->field_vars){
+                    if(field->loaded){
+                        loaded=true;
+                        break;
+                    }
+                }
+            }
+            if(var->is_field_var()){
+                //var is a field
+                const Variable* container=var->field_var_of;    //may be multi-level nesting later
+                if(container->loaded){
+                    //loaded as a whole
+                    loaded=true;
+                }
+                int id=var->get_field_id();
+                if(container->is_global() && container->field_vars[id]->loaded){
+                    //this very field was once read
+                    loaded=true;
+                }
+            }
+        }
+        if(loaded)
+            continue;
+        // //check pointee
+        // if(deref_level>0){
+        //     pointee_vars=FactPointTo::merge_pointees_of_pointer((*i),deref_level,fm->global_facts);
+        //     bool loaded=false;
+        //     for(const Variable* var:pointee_vars){
+        //         if(var->is_global() && access==Effect::READ && var->loaded ){
+        //             loaded=true;
+        //             break;
+        //         }
+        //     }
+        //     if(loaded)
+        //         continue;
+        // }
+
         if (is_eligible_var((*i), deref_level, access, cg_context)) {
             // Otherwise, this is an acceptable choice.
             ok_vars.push_back(*i);
@@ -722,9 +842,27 @@ VariableSelector::find_all_non_array_visible_vars(const Block *b, vector<Variabl
     }
 }
 
+void 
+VariableSelector::find_all_non_array_local_vars(const Block *b, vector<Variable *> &vars){
+    size_t i;
+    if (b) {
+        for (i = 0; i < b->func->param.size(); i++) {
+            vars.push_back(b->func->param[i]);
+        }
+        while (b) {
+            for (i = 0; i < b->local_vars.size(); i++) {
+                if (!((b->local_vars[i])->isArray))
+                    vars.push_back(b->local_vars[i]);
+            }
+            b = b->parent;
+        }
+    }
+}
+
 void
 VariableSelector::get_all_array_vars(vector<const Variable *> &array_vars) {
-    vector<Variable *> vars = GlobalList;
+    // get all global arrays
+    vector<Variable *> vars = GlobalList;   
     for (size_t i = 0; i < vars.size(); i++) {
         if (vars[i]->isArray) {
             array_vars.push_back(vars[i]);
@@ -823,7 +961,7 @@ VariableSelector::make_init_value(Effect::Access access, const CGContext &cg_con
     // the initialzer should always be less restricting than the variable to be initialized
     qfer.accept_stricter = false;
     if(t->get_indirect_level()>0){
-        puts("");
+        // puts("");
     }
     //non-pointer vars are initiated with constants
     if (t->eType != ePointer || rnd_flipcoin(20)) {
@@ -843,7 +981,7 @@ VariableSelector::make_init_value(Effect::Access access, const CGContext &cg_con
     Variable *var = NULL;
     // b == NULL means we are generating init for globals
     if (!b && CGOptions::ccomp()) {
-        get_all_array_vars(dummy);
+        get_all_array_vars(dummy);  //do not use array as init value
         var = choose_var(vars, access, cg_context, type, &qfer, eExact, dummy, true, true);
     } else {
         if (!CGOptions::addr_taken_of_locals())
@@ -1128,7 +1266,8 @@ VariableSelector::SelectLoopCtrlVar(const CGContext &cg_context, const vector<co
     // Note that many of the functions that select `var' can return null, if
     const Type *type = get_int_type();
     vector<Variable *> vars;
-    find_all_non_array_visible_vars(cg_context.get_current_block(), vars);
+    // find_all_non_array_visible_vars(cg_context.get_current_block(), vars);
+    find_all_non_array_local_vars(cg_context.get_current_block(), vars);
     // remove union variables that have both integer field(s) and pointer field(s)
     // because incrementing the integer field causes the pointer to be invalid, and the current
     // points-to analysis simply assumes loop stepping has no pointer effect

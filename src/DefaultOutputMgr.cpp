@@ -219,7 +219,9 @@ DefaultOutputMgr::Output()
 		OutputMgr::OutputHashFuncDef(out);
 		OutputMgr::OutputStepHashFuncDef(out);
 	}
-
+	Output_extraVariables(out);
+	Output_getInfoFunc(out);
+	Output_setInfoFunc(out);
 	if (!CGOptions::nomain())
 		OutputMain(out);
 	OutputTail(out);

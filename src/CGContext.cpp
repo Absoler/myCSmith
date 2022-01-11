@@ -253,6 +253,7 @@ CGContext::check_read_var(const Variable *v, const std::vector<const Fact*>& fac
 	return true;
 }
 
+//check if can read deref of v
 bool CGContext::read_pointed(const ExpressionVariable* v, const std::vector<const Fact*>& facts)
 {
 	size_t i;
@@ -263,7 +264,7 @@ bool CGContext::read_pointed(const ExpressionVariable* v, const std::vector<cons
 
 	bool allow_null_ptr = CGOptions::null_pointer_dereference_prob() > 0;
 	bool allow_dead_ptr = CGOptions::dead_pointer_dereference_prob() > 0;
-	if (!read_indices(v->get_var(), facts)) {
+	if (!read_indices(v->get_var(), facts)) {	// related to array
 		return false;
 	}
 	vector<const Variable*> tmp;
@@ -281,7 +282,7 @@ bool CGContext::read_pointed(const ExpressionVariable* v, const std::vector<cons
 		// make sure the remaining pointee are readable in context
 		for (i=0; i<tmp.size(); i++) {
 			const Variable* pointee = tmp[i];
-			if (!FactPointTo::is_special_ptr(pointee)) {
+			if (!FactPointTo::is_special_ptr(pointee)) {	// null, garbage, tbd
 				if (!check_read_var(pointee, facts)) {
 					*effect_accum = effect_accum_copy;
 					return false;

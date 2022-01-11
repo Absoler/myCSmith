@@ -42,3 +42,23 @@ platform.info
 
 # Files made by Csmith-generated programs.
 vol_addr.txt
+
+# Files made
+build/
+
+# vscode files
+.vscode/
+
+# outputfile
+*output*.c
+
+# extra files from pintool
+checkRead.out
+checkRead/*test*
+
+# created by notepad++
+*.bak
+
+#pin log
+*pin*.log
+

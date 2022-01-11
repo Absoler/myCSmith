@@ -48,6 +48,7 @@ project(csmith)
 # `git archive' inserts the abbreviated hash of the archive's commit into this
 # file.  (See the `.gitattributes' file.)
 #
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 set(GIT_HASH "$Format:%h$")
 if(GIT_HASH MATCHES "^\\$")
   ## METHOD 2: The source tree is a git repository.

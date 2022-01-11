@@ -115,6 +115,15 @@ Lhs::make_random(CGContext &cg_context, const Type* t, const CVQualifiers* qfer,
 			if (tmp.visit_facts(fm->global_facts, cg_context)) {
 				// bookkeeping
 				int deref_level = tmp.get_indirect_level();
+				if(deref_level<0||deref_level>1){
+					// printf("write %d\n",deref_level);
+				}
+				if(deref_level>0){
+					vector<const Variable*> targets=FactPointTo::get_pointees_under_level(var,deref_level-1,fm->global_facts);
+					for(const Variable* var:targets){
+						VariableSelector::set_used(var);
+					}
+				}
 				if (deref_level > 0) {
 					incr_counter(Bookkeeper::write_dereference_cnts, deref_level);
 				}

@@ -93,6 +93,7 @@ public:
 
 	static std::vector<const Variable*> merge_pointees_of_pointer(const Variable* ptr, int indirect, const std::vector<const Fact*>& facts);
 	static std::vector<const Variable*> merge_pointees_of_pointers(const std::vector<const Variable*>& ptrs, const std::vector<const Fact*>& facts);
+	static std::vector<const Variable*> get_pointees_under_level(const Variable* ptr, int indirect, const std::vector<const Fact*>& facts);	//zkb
 	static void update_facts_with_modified_index(std::vector<const Fact*>& facts, const Variable* var);
 	static void aggregate_all_pointto_sets(void);
 

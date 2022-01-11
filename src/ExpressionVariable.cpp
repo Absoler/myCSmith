@@ -92,6 +92,9 @@ ExpressionVariable::make_random(CGContext &cg_context, const Type* type, const C
 
 		// forbid a escaping pointer to take the address of an argument or a local variable
 		int indirection = var->type->get_indirect_level() - type->get_indirect_level();
+		if(indirection<0){
+			// printf("");
+		}
 		if (as_return && CGOptions::no_return_dead_ptr() &&
 			FactPointTo::is_pointing_to_locals(var, cg_context.get_current_block(), indirection, fm->global_facts)) {
 			continue;
@@ -101,10 +104,29 @@ ExpressionVariable::make_random(CGContext &cg_context, const Type* type, const C
 			ExpressionVariable tmp(*var, type);
 			if (tmp.visit_facts(fm->global_facts, cg_context)) {
 				ev = tmp.get_indirect_level() == 0 ? new ExpressionVariable(*var) : new ExpressionVariable(*var, type);
+				
+				int indirect=tmp.get_indirect_level();
 				cg_context.curr_blk = cg_context.get_current_block();
-                VariableSelector::set_used(var);    //zkb
+				// if(indirect>0&&!var->is_global()){
+				// 	printf("%d\n",tmp.get_indirect_level());
+				// }
+				vector<const Variable*> targets=FactPointTo::get_pointees_under_level(var,indirect,fm->global_facts);
+				for(const Variable* var:targets){
+					VariableSelector::set_used(var);
+				}
+                // VariableSelector::set_used(var);    //zkb
+				//set state for dereference
+				// vector<const Variable*> tmp;
+				// tmp=FactPointTo::merge_pointees_of_pointer(var,indirection,fm->global_facts);
+				// for(const Variable* var:tmp){
+				// 	VariableSelector::set_used(var);
+				// }
+				// if(tmp.size()>1){
+				// 	printf("3"); //seems impossible, so don't need codes above
+				// }
+
                 if(ev->get_indirect_level()!=0){
-                    printf("%d %s\n",ev->get_indirect_level(),ev->get_var()->get_actual_name().c_str());
+                    // printf("%d %s\n",ev->get_indirect_level(),ev->get_var()->get_actual_name().c_str());
                 }
 				break;  //success
 			}

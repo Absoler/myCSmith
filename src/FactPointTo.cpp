@@ -715,11 +715,37 @@ FactPointTo::merge_pointees_of_pointer(const Variable* ptr, int indirect, const 
 	return tmp;
 }
 
+std::vector<const Variable*> 
+FactPointTo::get_pointees_under_level(const Variable* ptr, int indirect, const std::vector<const Fact*>& facts){
+	vector<const Variable*> res,tmp;
+	if(indirect<0){
+		return res;
+	}
+	tmp.push_back(ptr);
+	res.push_back(ptr);
+	//[0, indirect], a total of indirect+1 variables
+	//indirect_level 0 means the ptr itself, of course it will be read if indirect > 0
+	//if it's a 1-level pointer dereffed for writing outside, then the arg <indirect> is 0
+	if(indirect>1){
+		// printf("1");
+	}
+	while(indirect-- >0){
+		tmp=FactPointTo::merge_pointees_of_pointers(tmp, facts);
+		res.insert(res.end(),tmp.begin(),tmp.end());
+	}
+	return res;
+}
+/*
+find pointees of ptrs according to facts
+*/
 std::vector<const Variable*>
 FactPointTo::merge_pointees_of_pointers(const std::vector<const Variable*>& ptrs, const std::vector<const Fact*>& facts)
 {
 	size_t i, j;
 	vector<const Variable*> pointee_vars;
+	if(ptrs.size()>1){
+		ptrs.size();
+	}
 	for (i=0; i<ptrs.size(); i++) {
 		const Variable* p = ptrs[i];
 		if (FactPointTo::is_special_ptr(p)) continue;
@@ -727,7 +753,8 @@ FactPointTo::merge_pointees_of_pointers(const std::vector<const Variable*>& ptrs
 		const FactPointTo* exist_fact = (const FactPointTo*)find_related_fact(facts, &dummy);
 		// I can not think of a reason this is null
 		// well...this actually happens when p is a parameter of function f, and we are in the middle of creating f
-		assert(exist_fact);
+		// assert(exist_fact);	//cancel it temporarily
+		// if(!exist_fact){ printf("get no fact in merge_pointees_of_pointers\n");}
 		if (exist_fact) {
 			for (j=0; j<exist_fact->get_point_to_vars().size(); j++) {
 				const Variable* pointee = exist_fact->get_point_to_vars()[j];

@@ -78,11 +78,19 @@ static bool param_first=true;			// Flag to track output of commas
 static int builtin_functions_cnt;
 
 void print_funcs(){
-    for(int i=0;i<FuncList.size();i++){
+	printf("%lu Functions totally\n",FuncList.size());
+    for(size_t i=0;i<FuncList.size();i++){
         printf("%s\n",FuncList[i]->name.c_str());
     }
 }
 
+vector<string> generate_useFuncs(){
+	std::vector<std::string> res(FuncList.size());
+	for(Function *func:FuncList){
+		res.push_back("	side=(side+(unsigned long)"+func->name+"%1000)%1000;");
+	}
+	return res;
+}
 /*
  * find FactMgr for a function
  */
@@ -647,7 +655,7 @@ Function::GenerateBody(const CGContext &prev_context)
 			fm->global_facts.push_back(FactPointTo::make_fact(param[i], FactPointTo::tbd_ptr));
 		}
 	}
-	printf("\nFunction::GenerateBody**********\n");
+	// printf("\nFunction::GenerateBody**********\n");
 	// Fill in the Function body.
 	if (is_builtin){
 		body = Block::make_dummy_block(cg_context);
@@ -656,7 +664,7 @@ Function::GenerateBody(const CGContext &prev_context)
 		body = Block::make_random(cg_context);
 	ERROR_RETURN();
 	body->set_depth_protect(true);
-	printf("\n************\n", FuncListSize());
+	// printf("\n************\n", FuncListSize());
 	// compute the pointers that are statically referenced in the function
 	// including ones referenced by its callees
 	body->get_referenced_ptrs(referenced_ptrs);

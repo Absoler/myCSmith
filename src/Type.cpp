@@ -1532,7 +1532,11 @@ Type::match(const Type* t, enum eMatchType mt) const
 	case eConvert: return is_convertable(t);
 	case eDereference: return is_dereferenced_from(t);
 	case eDerefExact: return (t == this || is_dereferenced_from(t));
-	case eFlexible: return is_derivable(t);
+	case eFlexible: 
+		if(t->eType==eSimple&&this->eType==ePointer){
+			t->get_base_type();
+		}
+		return is_derivable(t);
 	default: break;
 	}
 	return false;

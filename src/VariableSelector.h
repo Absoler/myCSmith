@@ -61,6 +61,10 @@ class VariableSelector
 	friend class ArrayVariable;
 public:
     static void set_used(const Variable* var); //zkb
+	static bool is_container_used(const Variable* &field, const vector<Variable*> &vars);
+	static bool is_field_used(const Variable* &container, const vector<Variable*> &vars);
+	static vector<string> generate_globalInfos();	//for pintool
+
 	VariableSelector(void) {};
 	static Variable* new_variable(const std::string &name, const Type *type, const Expression* init, const CVQualifiers* qfer);
 	// ISSUE: use it only when you want to create a static variable
@@ -141,6 +145,7 @@ private:
 	static void find_all_non_bitfield_visible_vars(const Block* b, vector<Variable*> &vars);
 
 	static void find_all_non_array_visible_vars(const Block* b, vector<Variable*> &vars);
+	static void find_all_non_array_local_vars(const Block* b, vector<Variable*> &vars);
 
 	static void expand_struct_union_vars(vector<Variable *>& vars, const Type* type);
 
