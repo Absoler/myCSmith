@@ -128,15 +128,43 @@ VOID Fini(INT32 code, VOID* val){
     print_globals(outfile);
     fprintf(outfile,"\n\noverlap:\n");
     // check whether reads overlap
-    sort(reads, reads+cnt_reads, comp_Read);
+    /* Supports detecting multiple executions of the same statement, */
+    // sort(reads, reads+cnt_reads, comp_Read);
+    // bool overlap=false;
+    // for(int i=0; i<cnt_reads-1; i++){
+    //     if(reads[i+1].isGlobal){
+    //         overlap=(reads[i].start+reads[i].length>reads[i+1].start&&reads[i+1].isGlobal);  //next read occur in current read range
+    //         if(overlap){
+    //             fprintf(outfile, "0x%lx: %s 0x%lx: %s len:%u    |    0x%lx: %s 0x%lx: %s len:%u\n", reads[i].ins_ptr, disasMap[reads[i].ins_ptr].c_str(), reads[i].start, reads[i].name, reads[i].length,
+    //                                                                                                 reads[i+1].ins_ptr, disasMap[reads[i+1].ins_ptr].c_str(), reads[i+1].start, reads[i+1].name, reads[i+1].length);
+    //         }                                                                            
+    //     }
+    // }
     bool overlap=false;
-    for(int i=0; i<cnt_reads-1; i++){
-        if(reads[i+1].isGlobal){
-            overlap=(reads[i].start+reads[i].length>reads[i+1].start&&reads[i+1].isGlobal);  //next read occur in current read range
+    for(int i=0;i<cnt_reads-1;i++){
+        if(!reads[i].isGlobal){
+            continue;
+        }
+        for(int j=i+1;j<cnt_reads;j++){
+            if(!reads[j].isGlobal){
+                continue;
+            }
+            if(reads[i].ins_ptr==reads[j].ins_ptr){
+                //only consider overlap from different instructions
+                continue;
+            }
+            if(reads[i].start<reads[j].start){
+                //overlap occurs when front read spans back read
+                overlap=(reads[i].start+reads[i].length>reads[j].start);
+            }else if(reads[i].start>reads[j].start){
+                overlap=(reads[j].start+reads[j].length>reads[i].start);
+            }else{
+                overlap=true;
+            }
             if(overlap){
                 fprintf(outfile, "0x%lx: %s 0x%lx: %s len:%u    |    0x%lx: %s 0x%lx: %s len:%u\n", reads[i].ins_ptr, disasMap[reads[i].ins_ptr].c_str(), reads[i].start, reads[i].name, reads[i].length,\
-                                                                                                    reads[i+1].ins_ptr, disasMap[reads[i+1].ins_ptr].c_str(), reads[i+1].start, reads[i+1].name, reads[i+1].length);
-            }                                                                            
+                                                                                                    reads[j].ins_ptr, disasMap[reads[j].ins_ptr].c_str(), reads[j].start, reads[j].name, reads[j].length);
+            }
         }
     }
     
