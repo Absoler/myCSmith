@@ -454,7 +454,7 @@ Block::need_nested_loop(const CGContext& cg_context)
 	if (looping && (s == NULL || !s->must_jump()) && cg_context.rw_directive) {
 		RWDirective* rwd = cg_context.rw_directive;
 		for (i=0; i<rwd->must_read_vars.size(); i++) {
-			size_t dimen = rwd->must_read_vars[i]->get_dimension();
+			size_t dimen = rwd->must_read_vars[i]->get_dimension();	//this is a virtual method, return 0 for non-array var
 			if (dimen > cg_context.iv_bounds.size()) {
 				return true;
 			} else if (dimen == cg_context.iv_bounds.size() && rnd_flipcoin(10)) {

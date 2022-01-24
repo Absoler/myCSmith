@@ -197,7 +197,7 @@ bool sub_variable_sets(const vector<const Variable *> &set1, const vector<const 
 	return false;
 }
 
-// combine two variable sets into one, note struct field "s1.f1" and "s1" is combined into "s1"
+/* combine two variable sets into one, note struct field "s1.f1" and "s1" is combined into "s1" */
 void combine_variable_sets(const vector<const Variable *> &set1, const vector<const Variable *> &set2, vector<const Variable *> &set_all)
 {
 	size_t i;
@@ -366,6 +366,14 @@ int Variable::get_field_id(void) const
 	return -1;
 }
 
+vector<int> Variable::get_field_id_list(void) const{
+	vector<int> res;
+	if(field_var_of){
+		res=field_var_of->get_field_id_list();
+		res.push_back(get_field_id());
+	}
+	return res;
+}
 ///////////////////////////////////////////////////////////////////////////////
 /* expand field variables of struct, assigned names, f0, f1, etc, to them
   ************************************************************************/
@@ -468,10 +476,8 @@ Variable::Variable(const std::string &name, const Type *type,
 	  isAuto(isAuto), isStatic(isStatic), isRegister(isRegister),
 	  isBitfield_(isBitfield), isAddrTaken(false), isAccessOnce(false),
 	  field_var_of(isFieldVarOf), isArray(false),
-	  qfer(isConsts, isVolatiles), loaded(false)
+	  qfer(isConsts, isVolatiles), loaded(false), field_taken(false)
 {
-	if(type&&type->eType==ePointer)
-		deref_loaded = vector<bool>(type->get_indirect_level(), false);
 	// nothing else to do
 }
 
@@ -484,10 +490,8 @@ Variable::Variable(const std::string &name, const Type *type, const Expression *
 	  isAuto(false), isStatic(false), isRegister(false), isBitfield_(false),
 	  isAddrTaken(false), isAccessOnce(false),
 	  field_var_of(0), isArray(false),
-	  qfer(*qfer), loaded(false)
+	  qfer(*qfer), loaded(false), field_taken(false)
 {
-	if(type&&type->eType==ePointer)
-		deref_loaded = vector<bool>(type->get_indirect_level(), false);
 	// nothing else to do
 }
 
@@ -498,10 +502,8 @@ Variable::Variable(const std::string &name, const Type *type, const Expression *
 	  isAddrTaken(false), isAccessOnce(false),
 	  field_var_of(isFieldVarOf),
 	  isArray(isArray),
-	  qfer(*qfer), loaded(false)
+	  qfer(*qfer), loaded(false), field_taken(false)
 {
-	if(type&&type->eType==ePointer)
-		deref_loaded = vector<bool>(type->get_indirect_level(), false);
 	// nothing else to do
 }
 
@@ -515,7 +517,6 @@ Variable::~Variable(void)
 	for (i = field_vars.begin(); i != field_vars.end(); ++i)
 		delete (*i);
 	field_vars.clear();
-	deref_loaded.clear();
 	if (init)
 	{
 		delete init;
@@ -698,6 +699,7 @@ Variable::get_named_var(void) const
 	return v->get_collective();
 }
 
+/* acquire the first array container*/
 const ArrayVariable *
 Variable::get_array(string &field) const
 {
@@ -1097,7 +1099,7 @@ Variable::to_string(void) const
 			ret += member->to_string();
 		}
 		//ret += ")";
-		return ret;
+		return ret;	//return all array element
 	}
 	switch (type->eType)
 	{

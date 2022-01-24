@@ -122,6 +122,9 @@ static const Variable* find_expr_key_var(const Expression* e)
 }
 
 //=======================================================================================
+/*
+create an array
+*/
 ArrayVariable *
 ArrayVariable::CreateArrayVariable(const CGContext& cg_context, Block* blk, const std::string &name, const Type *type, const Expression* init, const CVQualifiers* qfer, const Variable* isFieldVarOf)
 {
@@ -161,6 +164,7 @@ ArrayVariable::CreateArrayVariable(const CGContext& cg_context, Block* blk, cons
 		var->create_field_vars(type);
 	}
 	// create a list of alternative initial values
+	// why alternative??
 	unsigned int init_num = pure_rnd_upto(total_size / 2);
 	if (0) {   // keep the code for comparing the bug finding power with the else branch
 		if (type->eType == eSimple || type->eType == eStruct) {
@@ -196,6 +200,9 @@ ArrayVariable::ArrayVariable(Block* blk, const std::string &name, const Type *ty
 	  parent(blk),
 	  sizes(sizes)
 {
+	vector<unsigned int> tmp(sizes);
+	reverse(tmp.begin(),tmp.end());
+	arrMgr=new ArrayMgr(tmp);
 	// nothing else to do
 }
 
@@ -207,6 +214,9 @@ ArrayVariable::ArrayVariable(const ArrayVariable& av)
 	indices(av.indices),
 	init_values(av.init_values)
 {
+	vector<unsigned int> tmp(sizes);
+	reverse(tmp.begin(),tmp.end());
+	arrMgr=new ArrayMgr(tmp);
 	// nothing else to do
 }
 /*
@@ -258,6 +268,27 @@ ArrayVariable::size_in_bytes(void) const
 	return len;
 }
 
+/* choose an unloaded element to use*/
+vector<int>
+ArrayVariable::choose_indics(void) const{
+	vector<int> ans,res;
+	ArrayMgr* mgr=arrMgr;
+	for(int _=0;_<sizes.size();_++){
+		res.clear();
+		for(int i=0;i<mgr->len;i++){
+			if(!mgr->subMgrs[i]->loaded){
+				res.push_back(i);
+			}
+		}
+		int index=res[rnd_upto(res.size())];
+		ans.push_back(index);
+		mgr=mgr->subMgrs[index];
+	}
+	return ans;
+}
+/*
+generate an array item with random constant index
+*/
 ArrayVariable*
 ArrayVariable::itemize(void) const
 {
@@ -265,8 +296,13 @@ ArrayVariable::itemize(void) const
 	assert(collective == 0);
 	ArrayVariable* av = new ArrayVariable(*this);
 	VariableSelector::AllVars.push_back(av);
-	for (i=0; i<sizes.size(); i++) {
-		int index = rnd_upto(sizes[i]);
+	// for (i=0; i<sizes.size(); i++) {
+	// 	int index = rnd_upto(sizes[i]);
+	// 	av->add_index(new Constant(get_int_type(), StringUtils::int2str(index)));
+	// }
+	vector<int> indices=choose_indics();
+	assert(indices.size()>0);
+	for(int index:indices){
 		av->add_index(new Constant(get_int_type(), StringUtils::int2str(index)));
 	}
 	av->collective = this;
@@ -281,6 +317,7 @@ ArrayVariable*
 ArrayVariable::itemize(const vector<int>& const_indices) const
 {
 	size_t i;
+	// halfly dead, no useful part call this
 	assert(collective == 0);
 	assert(const_indices.size() == sizes.size());
 	ArrayVariable* av = new ArrayVariable(*this);
@@ -296,7 +333,7 @@ ArrayVariable::itemize(const vector<int>& const_indices) const
 	}
 	return av;
 }
-
+/* generate an array element with given Variable indices*/
 ArrayVariable*
 ArrayVariable::itemize(const std::vector<const Variable*>& indices, Block* blk) const
 {
@@ -338,7 +375,9 @@ ArrayVariable::itemize(const std::vector<const Expression*>& indices, Block* blk
 	blk->local_vars.push_back(av);
 	return av;
 }
-
+/*
+选一个array元素出来使用，可能会改变下标
+*/
 ArrayVariable*
 ArrayVariable::rnd_mutate(void)
 {
@@ -389,7 +428,7 @@ ArrayVariable::rnd_mutate(void)
 			ostringstream oss;
 			oss << offset;
         	fi->add_operand(new Constant(get_int_type(), oss.str()));
-        	Expression* mutated_e = new ExpressionFuncall(*fi);
+        	Expression* mutated_e = new ExpressionFuncall(*fi);	//original index + random offset
 			new_indices.push_back(mutated_e);
 		}
 		else {
@@ -400,6 +439,9 @@ ArrayVariable::rnd_mutate(void)
 	return VariableSelector::create_mutated_array_var(this, new_indices);
 }
 
+/*
+好像是比较两个array变量有没有可能不一样……
+*/
 bool
 ArrayVariable::is_variant(const Variable* v) const
 {

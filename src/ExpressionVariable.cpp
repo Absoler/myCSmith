@@ -110,6 +110,8 @@ ExpressionVariable::make_random(CGContext &cg_context, const Type* type, const C
 				// if(indirect>0&&!var->is_global()){
 				// 	printf("%d\n",tmp.get_indirect_level());
 				// }
+				if(var->isArray&&indirect>0)
+					printf("3");
 				vector<const Variable*> targets=FactPointTo::get_pointees_under_level(var,indirect,fm->global_facts);
 				for(const Variable* var:targets){
 					VariableSelector::set_used(var);

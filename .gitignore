@@ -54,6 +54,7 @@ build/
 
 # extra files from pintool
 checkRead.out
+result.out
 checkRead/*test*
 
 # created by notepad++
@@ -62,3 +63,5 @@ checkRead/*test*
 #pin log
 *pin*.log
 
+# run log
+problem/

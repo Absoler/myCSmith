@@ -352,7 +352,9 @@ int
 main(int argc, char **argv)
 {
 	g_Seed = platform_gen_seed();
-
+	// g_Seed=90264886;
+	// g_Seed=3332292053;
+	// g_Seed=2120573435;
 	CGOptions::set_default_settings();
 
 	for (int i=1; i<argc; i++) {

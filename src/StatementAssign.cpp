@@ -58,7 +58,7 @@
 #include "VectorFilter.h"
 
 #include "random.h"
-
+#include "FactPointTo.h"
 using namespace std;
 
 //////////////////////////////////////////////////////////////////////////////
@@ -220,6 +220,10 @@ StatementAssign::make_random(CGContext &cg_context, const Type* type, const CVQu
 	cg_context.merge_param_context(lhs_cg_context, true);
 	ERROR_GUARD_AND_DEL2(NULL, e, lhs);
 	StatementAssign *stmt_assign = make_possible_compound_assign(cg_context, type, *lhs, op, *e);
+	// if(lhs->get_var()->name=="l_166"){
+	// 	vector<const Variable*> tars=FactPointTo::get_pointees_under_level(lhs->get_var(),1,fm->global_facts);
+	// 	printf("3");
+	// }
 	ERROR_GUARD_AND_DEL2(NULL, e, lhs);
 	return stmt_assign;
 }

@@ -1,0 +1,4 @@
+#! /bin/bash
+cd checkRead
+make PIN_ROOT=../../pin-3.21-98484-ge7cd811fd-gcc-linux/ obj-intel64/checkRead.so
+cd ..

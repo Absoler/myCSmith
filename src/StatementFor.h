@@ -76,7 +76,7 @@ public:
 	virtual bool visit_facts(vector<const Fact*>& inputs, CGContext& cg_context) const;
 
 	virtual void Output(std::ostream &out, FactMgr* fm, int indent = 0) const;
-
+	bool array;	//true means generated in StmtArrayOp::make_random
 private:
 	// XXX --- `init' and `incr' have the "wrong types."  Should be exprs.
 	const StatementAssign &init;

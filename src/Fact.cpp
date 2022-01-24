@@ -139,6 +139,10 @@ find_related_fact(const FactVec& facts, const Fact* new_fact)
             return facts[i];
         }
     }
+    vector<string> names;
+    for (i=0; i<facts.size(); i++) {
+        names.push_back(facts[i]->get_var()->name);
+    }
     return 0;
 }
 

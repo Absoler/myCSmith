@@ -85,6 +85,7 @@ StatementArrayOp::make_random(CGContext &cg_context)
 		return make_random_array_init(cg_context);
 	}
 	StatementFor* sf = StatementFor::make_random_array_loop(cg_context);
+	sf->array=true;
 	return sf;
 }
 
@@ -132,7 +133,7 @@ StatementArrayOp::make_random_array_init(CGContext &cg_context)
 				break;
 			}
 		} while (true);
-		invalid_vars.push_back(cv);
+		invalid_vars.push_back(cv);	//don't choose same vars as ctrl vars
 		cvs.push_back(cv);
 		bool read = cg_context.read_indices(cv, fm->global_facts);
 		assert(read);
@@ -157,6 +158,7 @@ StatementArrayOp::make_random_array_init(CGContext &cg_context)
 	for (i=0; i<cvs.size(); i++) {
 		cg_context.iv_bounds.erase(cvs[i]);
 	}
+	sa->type_init=true;
 	return sa;
 }
 
@@ -176,7 +178,7 @@ StatementArrayOp::StatementArrayOp(Block* b, const ArrayVariable* av,
 	  body(body),
 	  init_value(0)
 {
-	// Nothing else to do.
+	printf("2");// Nothing else to do.
 }
 
 /*
@@ -246,6 +248,9 @@ void
 StatementArrayOp::Output(std::ostream &out, FactMgr* fm, int indent) const
 {
 	size_t i;
+	out<<"$";
+	if(type_init) 
+		out<<"$";
 	output_header(out, indent);
 
 	if (body) {
@@ -287,6 +292,8 @@ StatementArrayOp::Output(std::ostream &out, FactMgr* fm, int indent) const
 		out << "}";
 		outputln(out);
 	}
+	out<<"$";
+	if(type_init) out<<"$";
 }
 
 bool

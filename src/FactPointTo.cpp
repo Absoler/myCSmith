@@ -828,6 +828,9 @@ FactPointTo::update_facts_with_modified_index(std::vector<const Fact*>& facts, c
 	}
 }
 
+/*
+根据facts更新ptrs和对应的aliases，后两个集合中的元素根据index一一对应
+*/
 void
 FactPointTo::update_ptr_aliases(const vector<Fact*>& facts, vector<const Variable*>& ptrs, vector<vector<const Variable*> >& aliases)
 {
@@ -857,7 +860,9 @@ FactPointTo::update_ptr_aliases(const vector<Fact*>& facts, vector<const Variabl
 		}
 	}
 }
-
+/*
+use all fact to update all funcs' pointer fact
+*/
 void
 FactPointTo::aggregate_all_pointto_sets(void)
 {

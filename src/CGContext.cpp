@@ -293,6 +293,9 @@ bool CGContext::read_pointed(const ExpressionVariable* v, const std::vector<cons
 	return true;
 }
 
+/* 
+check if the deref of v could be written
+*/
 bool CGContext::write_pointed(const Lhs* v, const std::vector<const Fact*>& facts)
 {
 	size_t i;
@@ -389,7 +392,7 @@ CGContext::check_write_var(const Variable *v, const std::vector<const Fact*>& fa
 }
 
 /*
- *
+for array element or field of an array(struct/union type) element, check facts of indices
  */
 bool
 CGContext::read_indices(const Variable* v, const vector<const Fact*>& facts)

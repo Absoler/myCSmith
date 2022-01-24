@@ -80,7 +80,7 @@ public:
 
 	virtual bool is_assertable(const Statement* s) const = 0;
 
-	virtual bool is_related(const Fact& fact) const { return eCat == fact.eCat && get_var() == fact.get_var();}
+	virtual bool is_related(const Fact& fact) const { return eCat == fact.eCat && get_var() == fact.get_var();}	//same type, and describe the same var
 
 	virtual bool equal(const Fact& fact) const { return this == &fact; };
 

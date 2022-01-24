@@ -40,6 +40,28 @@ class Expression;
 class Block;
 using namespace std;
 
+class ArrayMgr{
+	public:
+	bool loaded;
+	bool part_loaded;
+	std::vector<ArrayMgr*> subMgrs;
+	int len,empty;
+	ArrayMgr():loaded(false),part_loaded(false),len(0){}
+	ArrayMgr(vector<unsigned int> sizes){
+		if(!sizes.empty()){
+			len=sizes.back();
+			sizes.pop_back();
+			subMgrs.resize(len);
+			for(int i=0;i<len;i++){
+				subMgrs[i]=new ArrayMgr(sizes);
+			}
+		}else{
+			len=1;
+		}
+	}
+	
+};
+
 class ArrayVariable : public Variable
 {
 public:
@@ -57,6 +79,7 @@ public:
 	const std::vector<const Expression*>& get_more_init_values(void) const { return init_values;}
 	bool no_loop_initializer(void) const;
 
+	vector<int> choose_indics(void) const;	//choose an unloaded element to use
 	ArrayVariable* itemize(void) const;
 	ArrayVariable* itemize(const vector<int>& const_indices) const;
 	ArrayVariable* itemize(const std::vector<const Variable*>& indices, Block* blk) const;
@@ -86,6 +109,7 @@ public:
 
 	const ArrayVariable* collective;
 	Block* parent;
+	ArrayMgr* arrMgr;
 private:
 	ArrayVariable(Block* blk, const std::string &name, const Type *type, const Expression* init, const CVQualifiers* qfer, const vector<unsigned int>& sizes, const Variable* isFieldVarOf);
 

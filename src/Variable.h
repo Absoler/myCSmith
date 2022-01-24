@@ -162,6 +162,8 @@ public:
     //zkb
     bool loaded;
 	std::vector<bool> deref_loaded;
+	bool field_taken;	//=true means part of this variable was read, may be field of field... of this
+	vector<int> get_field_id_list(void) const;
 private:
 	Variable(const std::string &name, const Type *type, const Expression* init, const CVQualifiers* qfer);
 	Variable(const std::string &name, const Type *type, const Expression* init, const CVQualifiers* qfer, const Variable* isFieldVarOf, bool isArray);

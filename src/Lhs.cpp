@@ -109,6 +109,25 @@ Lhs::make_random(CGContext &cg_context, const Type* t, const CVQualifiers* qfer,
 		if (!t->is_float() && var->type->is_float()) {
 			valid = false;
 		}
+		if(valid){
+			//if this is compound_assign, then var will also be read!
+			vector<const Variable*> targets;
+			int deref_level = var->type->get_indirect_level() - t->get_indirect_level();
+			if(compound_assign){
+				targets=FactPointTo::get_pointees_under_level(var,deref_level,fm->global_facts);
+			}else{
+				targets=FactPointTo::get_pointees_under_level(var,deref_level-1,fm->global_facts);
+			}
+			if(var->isArray&&targets.size()>1){
+				printf("3");
+			}
+			for(const Variable* v:targets){
+				if(VariableSelector::check_var_loaded(v)){
+					valid=false;
+					break;
+				}
+			}
+		}
 		if (valid) {
 			assert(var);
 			Lhs tmp(*var, t, compound_assign);
@@ -118,16 +137,24 @@ Lhs::make_random(CGContext &cg_context, const Type* t, const CVQualifiers* qfer,
 				if(deref_level<0||deref_level>1){
 					// printf("write %d\n",deref_level);
 				}
-				if(deref_level>0){
-					vector<const Variable*> targets=FactPointTo::get_pointees_under_level(var,deref_level-1,fm->global_facts);
+				vector<const Variable*> targets;
+				// if(deref_level>0){
+					if(compound_assign){
+						targets=FactPointTo::get_pointees_under_level(var,deref_level,fm->global_facts);
+					}else{
+						targets=FactPointTo::get_pointees_under_level(var,deref_level-1,fm->global_facts);
+					}
 					for(const Variable* var:targets){
 						VariableSelector::set_used(var);
 					}
-				}
+				// }
 				if (deref_level > 0) {
 					incr_counter(Bookkeeper::write_dereference_cnts, deref_level);
 				}
 				Bookkeeper::record_volatile_access(var, deref_level, true);
+				if(var->isArray||var->name=="g_28"){
+					printf("2");
+				}
 				return new Lhs(*var, t, compound_assign);
 			}
 			// restore the effects

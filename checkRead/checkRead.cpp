@@ -4,16 +4,19 @@
 #include<algorithm>
 #include<map>
 #include<cstring>
+#include<vector>
 using std::string;
 using std::map;
 using std::upper_bound;
 using std::sort;
+using std::vector;
 
 #define MAX_GLOBAL_VAR_NUM 1000
-#define MAX_MEMORY_READ_NUM 10000
+
 string targetFuncPrefix;
 FILE* outfile;
-
+FILE* resfile;
+bool fail=false;
 
 struct Var{	//record a var
 	ADDRINT addr;
@@ -23,12 +26,16 @@ struct Var{	//record a var
 bool comp_Var(const Var& var1, const Var& var2){
 	return var1.addr<var2.addr;
 }
+
 struct Read{	//record a read operation
 	ADDRINT start, ins_ptr; 
     UINT32 length;
 	BOOL isGlobal;
     char name[10];
-}reads[MAX_MEMORY_READ_NUM];
+};
+int read_limit=10000;
+vector<Read> reads(read_limit);
+
 bool comp_Read(const Read& read1, const Read& read2){
     if(read1.isGlobal&&(!read2.isGlobal)){
         return true;
@@ -78,10 +85,16 @@ VOID hack_getInfo(RTN rtn, VOID* v){
 
 //----------record read info-----------
 VOID record_Read(ADDRINT ip, ADDRINT _start, UINT32 _length) { 
-    if(cnt_reads>=MAX_MEMORY_READ_NUM){
-        printf("too many reads!\n");
-        exit(1);
+    if(cnt_reads>=read_limit-1){
+        if(read_limit>=5e5){
+            printf("too many reads!(>500000)");
+            exit(1);
+        }
+        printf("%d reads!\n",read_limit);
+        read_limit+=10000;
+        reads.resize(read_limit);
     }
+    reads.push_back(Read());
     reads[cnt_reads].start=_start;
     reads[cnt_reads].length=_length;
     reads[cnt_reads].ins_ptr= ip;
@@ -162,12 +175,13 @@ VOID Fini(INT32 code, VOID* val){
                 overlap=true;
             }
             if(overlap){
+                fail=true;
                 fprintf(outfile, "0x%lx: %s 0x%lx: %s len:%u    |    0x%lx: %s 0x%lx: %s len:%u\n", reads[i].ins_ptr, disasMap[reads[i].ins_ptr].c_str(), reads[i].start, reads[i].name, reads[i].length,\
                                                                                                     reads[j].ins_ptr, disasMap[reads[j].ins_ptr].c_str(), reads[j].start, reads[j].name, reads[j].length);
             }
         }
     }
-    
+    fprintf(resfile,(fail?"1":"0"));
     print_reads(stdout);
 	// print_globals(stdout);
     // fprintf(outfile, "#eof\n");
@@ -184,6 +198,7 @@ int main(int argc, char* argv[]){
     targetFuncPrefix=argv[argc-1];
     PIN_InitSymbols();
     outfile=fopen("checkRead.out", "w");
+    resfile=fopen("result.out", "w");
     if(PIN_Init(argc, argv)) return Usage();
 
     RTN_AddInstrumentFunction(hack_getInfo, 0);
@@ -192,7 +207,7 @@ int main(int argc, char* argv[]){
     
     PIN_AddFiniFunction(Fini, 0);
 
-    PIN_StartProgram();
+    PIN_StartProgram();  
     return 0;
 }
 
@@ -207,7 +222,7 @@ void print_reads(FILE* file){
 void print_globals(FILE* file){
     fprintf(file, "all global variables\n");
     for(int i=0;i<cnt_globals;i++){
-        fprintf(file, "0x%lx %d\n", globals[i].addr, globals[i].size);
+        fprintf(file, "0x%lx %d  %s\n", globals[i].addr, globals[i].size, globals[i].name);
     }
     fprintf(file,"\n");
 }

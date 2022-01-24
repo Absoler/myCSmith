@@ -1,0 +1,14 @@
+#! /bin/bash
+cnt=$1
+while [ $cnt -gt 0 ]
+do
+    build/src/csmith --no-safe-math --no-volatiles -o runtime/output2.c
+    gcc runtime/output2.c -g -w -O1 -o runtime/output2
+    ../pin-3.21-98484-ge7cd811fd-gcc-linux/pin -t checkRead/obj-intel64/checkRead.so -- runtime/output2 func
+    read line < ./result.out
+    if [ $line == 1 ] ; then
+        echo 'fail'
+        cnt=0
+    fi
+    ((cnt--))
+done

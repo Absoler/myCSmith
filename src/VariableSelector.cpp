@@ -178,7 +178,7 @@ VariableSelector::expand_struct_union_vars(vector<Variable *> &vars, const Type 
         // don't break up a struct if it matches the given type
         if (tmpvar->is_aggregate() && (tmpvar->type != type)) {
             vars.erase(vars.begin() + i);
-            vars.insert(vars.end(), tmpvar->field_vars.begin(), tmpvar->field_vars.end());
+            vars.insert(vars.end(), tmpvar->field_vars.begin(), tmpvar->field_vars.end());  //break up and insert recursively
             i--;
             len = vars.size();
         }
@@ -332,7 +332,7 @@ VariableSelector::choose_ok_var(const vector<Variable *> &vars) {
     }
     return v;
 }
-
+/* choose an array element of an array from vars*/
 const Variable *
 VariableSelector::choose_ok_var(const vector<const Variable *> &vars) {
     int len = vars.size();
@@ -389,13 +389,29 @@ void VariableSelector::set_used(const Variable *var) {
             }
         }
     }else if(var->is_field_var()){
-        string containerName=var->field_var_of->name;
-        int id=var->get_field_id();
-        for(Variable *v: GlobalList){
-            if(v->name==containerName){
-                v->field_vars[id]->loaded=true;
+        const Variable* topContainer=var->get_top_container();
+        if(topContainer->is_global()){
+            for(Variable *v: GlobalList){
+                if(v->name==topContainer->name){
+                    vector<int> id_list=var->get_field_id_list();
+                    Variable* realField=v;
+                    for(int id:id_list){
+                        realField->field_taken=true;
+                        realField=realField->field_vars[id];
+                    }
+                    realField->loaded=true;
+                }
             }
+            
+            
         }
+        // string containerName=var->get_top_container()->name;
+        // int id=var->get_field_id();
+        // for(Variable *v: GlobalList){
+        //     if(v->name==containerName){
+        //         v->field_vars[id]->loaded=true;
+        //     }
+        // }
     }else{
         if(!var->is_global()){
             return;
@@ -441,6 +457,42 @@ VariableSelector::is_container_used(const Variable* &field, const vector<Variabl
     return false;
 }
 
+/*
+check wether one var has been loaded.
+take aggregate, field situation carefully 
+*/
+bool
+VariableSelector::check_var_loaded(const Variable* var){
+    bool loaded=false;
+    if(var->is_global()&&var->loaded){
+        loaded=true;
+    }
+    if(var->is_global()&&var->is_aggregate()){
+        if(var->field_taken){
+            loaded=true;
+        }
+    }
+    if(var->is_field_var()){
+        //var is a field
+        const Variable* container=var->get_top_container();    //may be multi-level nesting
+        vector<int> id_list=var->get_field_id_list();
+        if(container->is_global()&&container->loaded){
+            //once loaded as a whole
+            loaded=true;
+        }
+
+        if(container->is_global()){
+            const Variable* realField=container;
+            for(int id:id_list){
+                realField=realField->field_vars[id];
+            }
+            if(realField->loaded){
+                loaded=true;
+            }
+        }
+    }
+    return loaded;
+}
 // --------------------------------------------------------------
 /*
  * Choose a variable from `vars' to read or write.
@@ -512,45 +564,85 @@ VariableSelector::choose_var(vector<Variable *> vars,
         }
 
 
-        int deref_level = (*i)->type->get_indirect_level() - type->get_indirect_level();
         //-1 means ref(&), >0 means deref(*)
+        int deref_level = (*i)->type->get_indirect_level() - type->get_indirect_level();
+        
+        //targets contain all possible loaded vars in this current operation(use this var) when considering derefence and READ or WRITE
         vector<const Variable*> targets;
         if(access==Effect::READ){
             targets=FactPointTo::get_pointees_under_level((*i),deref_level,fm->global_facts);
         }else if(access==Effect::WRITE){
             targets=FactPointTo::get_pointees_under_level((*i),deref_level-1,fm->global_facts);
         }
-        //targets contain all accessed vars if deref exists
+        
+        
+        //if one of targets has been read, loaded will be true and this var can't be used
         bool loaded=false;
         for(const Variable* var:targets){
-            if(var->is_global()&&var->loaded){
-                loaded=true;
-            }
-            if(var->is_global()&&var->is_aggregate()){
-                //var is struct/union
-                for(Variable* field:var->field_vars){
-                    if(field->loaded){
-                        loaded=true;
-                        break;
-                    }
-                }
-            }
-            if(var->is_field_var()){
-                //var is a field
-                const Variable* container=var->field_var_of;    //may be multi-level nesting later
-                if(container->loaded){
-                    //loaded as a whole
-                    loaded=true;
-                }
-                int id=var->get_field_id();
-                if(container->is_global() && container->field_vars[id]->loaded){
-                    //this very field was once read
-                    loaded=true;
-                }
-            }
+            /* use check_var_loaded()*/
+            // if(var->is_global()&&var->loaded){
+            //     loaded=true;
+            // }
+            // if(var->is_global()&&var->is_aggregate()){
+            //     //var is struct/union
+            //     /**/
+            //     // for(Variable* field:var->field_vars){
+            //     //     if(field->loaded){
+            //     //         loaded=true;
+            //     //         break;
+            //     //     }
+            //     // }
+            //     if(var->field_taken){
+            //         loaded=true;
+            //     }
+            // }
+            // if(var->is_field_var()){
+            //     //var is a field
+            //     const Variable* container=var->get_top_container();    //may be multi-level nesting
+            //     vector<int> id_list=var->get_field_id_list();
+            //     if(container->is_global()&&container->loaded){
+            //         //once loaded as a whole
+            //         loaded=true;
+            //     }
+            //
+            //     if(container->is_global()){
+            //         const Variable* ctnrField=container;
+            //         for(int id:id_list){
+            //             ctnrField=ctnrField->field_vars[id];
+            //         }
+            //         if(ctnrField->loaded){
+            //             loaded=true;
+            //         }
+            //     }
+            //  
+            //     // int id=var->get_field_id();
+            //     // if(container->is_global() && container->field_vars[id]->loaded){
+            //     //     //this very field was once read
+            //     //     loaded=true;
+            //     // }
+            // }
+            loaded=check_var_loaded(var);
+            if(loaded) break;
         }
-        if(loaded)
+        if(loaded){
             continue;
+        }
+        /* don't need restrict loop now*/
+        //if in a loop and one of targets is(or part of) global, then this var will be abandoned even if its loaded=false
+        // bool global_inLoop=false;
+        // bool inLoop=cg_context.get_current_block()->looping;   
+        // if(inLoop){
+        //     for(const Variable* var:targets){
+        //         if(var->is_global()||(var->is_field_var()&&var->field_var_of->is_global())){
+        //             global_inLoop=true;
+        //             break;
+        //         }
+        //     }
+        // }
+        // if(global_inLoop){
+        //     // continue;
+        // }
+        //
         // //check pointee
         // if(deref_level>0){
         //     pointee_vars=FactPointTo::merge_pointees_of_pointer((*i),deref_level,fm->global_facts);
@@ -799,7 +891,9 @@ VariableSelector::SelectGlobal(Effect::Access access, const CGContext &cg_contex
         }
         const Type *t = Type::random_type_from_type(type, no_volatile);
         ERROR_GUARD(NULL);
-        return GenerateNewGlobal(access, cg_context, t, qfer);
+        // if(!cg_context.get_current_block()->looping){
+            return GenerateNewGlobal(access, cg_context, t, qfer);
+        // }
     }
     return var;
 }
@@ -1285,12 +1379,15 @@ VariableSelector::SelectLoopCtrlVar(const CGContext &cg_context, const vector<co
     Variable *var = choose_var(vars, Effect::WRITE, cg_context, type, 0, eConvert, invalid_vars, true);
     ERROR_GUARD(NULL);
     if (var == NULL) {
-        if (CGOptions::global_variables()) {
-            var = GenerateNewGlobal(Effect::WRITE, cg_context, type, 0);
-        } else {
-            var = GenerateNewParentLocal(*cg_context.get_current_block(),
+        // if (CGOptions::global_variables()) {
+        //     var = GenerateNewGlobal(Effect::WRITE, cg_context, type, 0);
+        // } else {
+        //     var = GenerateNewParentLocal(*cg_context.get_current_block(),
+        //                                  Effect::WRITE, cg_context, type, 0);
+        // }
+        // originally above, do this to prevent use global as loop ctrl var
+        var = GenerateNewParentLocal(*cg_context.get_current_block(),
                                          Effect::WRITE, cg_context, type, 0);
-        }
     }
     return var;
 }
@@ -1319,6 +1416,9 @@ VariableSelector::select(Effect::Access access,
     switch (scope) {
         case eGlobal:
             var = SelectGlobal(access, cg_context, type, qfer, mt, invalid_vars);
+            // if(!var){
+            //     var=SelectParentLocal(access, cg_context, type, qfer, mt, invalid_vars);
+            // }
             break;
         case eParentLocal:
             // ...a local var from one of its blocks.
@@ -1484,7 +1584,7 @@ VariableSelector::create_random_array(const CGContext &cg_context) {
 }
 
 /*
- * select a random array variable, or generate a new one if none available
+ * select a random array variable(father array), or generate a new one if none available
  */
 ArrayVariable *
 VariableSelector::select_array(const CGContext &cg_context) {
@@ -1661,6 +1761,18 @@ VariableSelector::find_var_by_name(string name) {
  */
 void
 VariableSelector::doFinalization(void) {
+    for(Variable* var:AllVars){
+        if(var->isArray){
+            ArrayVariable* ar=dynamic_cast<ArrayVariable*>(var);
+            // printf("%s\n",ar->name.c_str());
+        }
+    }
+    for(Variable* var:GlobalList){
+        if(var->isArray){
+            ArrayVariable* ar=dynamic_cast<ArrayVariable*>(var);
+            // printf("12");
+        }
+    }
     size_t i;
     for (i = 0; i < AllVars.size(); i++) {
         delete AllVars[i];

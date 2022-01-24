@@ -70,12 +70,15 @@ public:
 	virtual bool visit_facts(vector<const Fact*>& inputs, CGContext& cg_context) const;
 	virtual void Output(std::ostream &out, FactMgr* fm, int indent = 0) const;
 
-	const ArrayVariable* array_var;
-	const std::vector<const Variable*> ctrl_vars;
-	const std::vector<int> inits;
-	const std::vector<int> incrs;
-	const Block *body;
+	/* if body is 0, then this is a for-stmt in which an array element will be assigned: array_var = init_value*/
+	const ArrayVariable* array_var;	// the target array item
+	const std::vector<const Variable*> ctrl_vars;	// ctrl-vars of for-stmt
+	const std::vector<int> inits;					// init values of for-stmt
+	const std::vector<int> incrs;					// incr valuse if for-stmt		
 	const Expression *init_value;
+	/* if body exists, then just use body as for-body*/
+	const Block *body;
+	bool type_init;	//true means make_random_array_init
 private:
 	static void make_random_iter_ctrl(int size, int &init, int &incr);
 };

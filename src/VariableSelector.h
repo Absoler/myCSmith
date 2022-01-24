@@ -110,6 +110,7 @@ public:
 	static void get_all_local_vars(const Block* b, vector<const Variable *> &vars);
 	static const Variable* find_var_by_name(string name);
 
+	static bool check_var_loaded(const Variable* var);	//zkb
 private:
 	static ArrayVariable* create_array_and_itemize(Block* blk, string name, const CGContext& cg_context, const Type* t, const Expression* init, const CVQualifiers* qfer);
 
