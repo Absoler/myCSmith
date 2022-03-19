@@ -2,6 +2,7 @@
 #include<string>
 #include<cstdio>
 #include<algorithm>
+#include<set>
 #include<map>
 #include<cstring>
 #include<vector>
@@ -48,34 +49,23 @@ bool comp_Read(const Read& read1, const Read& read2){
 int cnt_globals=0, cnt_reads=0;
 map<ADDRINT, string> disasMap;
 
+map<ADDRINT, int> forVars;   // contain all global vars read in a for-loop, and their read times
 
 //---------get global info------------
 VOID record_var(ADDRINT _addr, ADDRINT cnt){
     // printf("pin info-addr: %lu    cnt: %ld\n",_addr,cnt);
-    printf("num of global vars%ld\n",cnt);
+    printf("num of global vars  %ld\n",cnt);
     if(cnt>MAX_GLOBAL_VAR_NUM){
         printf("too many global variables!\n");
         exit(1);
     }
     PIN_SafeCopy(globals,Addrint2VoidStar(_addr),sizeof(Var)*cnt);
     cnt_globals=cnt;
-    // for(int i=0;i<cnt_globals;i++){
-    //     printf(" %s\n",globals[i].name);
-    // }
-    // printf("%lu\n",res);
-	// globals[cnt_globals++] = (Var){_addr, _size};
 }
-// VOID testName(ADDRINT _addr, ADDRINT _size){
-//     printf("2\n");
-//     char name[10];
-//     name[_size]=0;
-//     PIN_SafeCopy(name,Addrint2VoidStar(_addr),_size);
-//     printf("getname %s\n",name);
-// }
+
 VOID hack_getInfo(RTN rtn, VOID* v){
 	RTN_Open(rtn);
 	if(RTN_Name(rtn)=="getInfo"){
-        printf("1\n");
 		RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR)record_var,
 			IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
 			IARG_FUNCARG_ENTRYPOINT_VALUE, 1, IARG_END);
@@ -118,6 +108,21 @@ VOID hack_targetFunc(RTN rtn, VOID* v){
     RTN_Close(rtn);
 }
 
+//----------get forVars--------------
+VOID record_ForVar(ADDRINT addr, int cnt){
+    forVars[addr]=cnt;
+}
+VOID hack_setForVar(RTN rtn, VOID* v){
+    RTN_Open(rtn);
+    if(RTN_Name(rtn)=="setForVar"){
+        RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR)record_ForVar,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 2, IARG_END);
+    }
+    RTN_Close(rtn);
+}
+
 
 //-------util----------------
 void print_reads(FILE* file);
@@ -126,12 +131,12 @@ void print_globals(FILE* file);
 //----------analysis--------
 VOID Fini(INT32 code, VOID* val){
 	sort(globals, globals+cnt_globals, comp_Var);
+    //identify all global reads
     for(int i=0;i<cnt_reads;i++){
         // globals[id] 's address is the maximum less than or equal to reads[i].start
         int id=upper_bound(globals, globals+cnt_globals, (Var){reads[i].start, 0}, comp_Var)-globals-1;
         if(id>=0&&id<cnt_globals){
             // mark global read
-            //printf("%lx %d\n",reads[i].start, id);
             reads[i].isGlobal = (reads[i].start<globals[id].addr+globals[id].size && reads[i].start+reads[i].length<=globals[id].addr+globals[id].size);
             if(reads[i].isGlobal){
                 strcpy(reads[i].name,globals[id].name);
@@ -183,8 +188,6 @@ VOID Fini(INT32 code, VOID* val){
     }
     fprintf(resfile,(fail?"1":"0"));
     print_reads(stdout);
-	// print_globals(stdout);
-    // fprintf(outfile, "#eof\n");
 }
 
 INT32 Usage(){
