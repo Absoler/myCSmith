@@ -239,7 +239,6 @@ Statement::make_random(CGContext &cg_context,
 	DEPTH_GUARD_BY_TYPE_RETURN_WITH_FLAG(dtStatement, t, NULL);
 	// Should initialize table first
 	Statement::InitProbabilityTable();
-
 	if ((CGOptions::stop_by_stmt() >= 0) && (sid >= CGOptions::stop_by_stmt())) {
 		t = eReturn;
 	}
@@ -295,8 +294,8 @@ Statement::make_random(CGContext &cg_context,
 		s = StatementContinue::make_random(cg_context);
 		break;
 	case eGoto:
-		s = StatementGoto::make_random(cg_context);
-		break;
+		// s = StatementGoto::make_random(cg_context);
+		// break;
 	case eArrayOp:
 		s = StatementArrayOp::make_random(cg_context);
 		break;

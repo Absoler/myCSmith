@@ -268,22 +268,59 @@ ArrayVariable::size_in_bytes(void) const
 	return len;
 }
 
+string 
+ArrayVariable::get_name_withIndices() const{
+	string res=name;
+	if(collective==0||indicesType==1){
+		return res;
+	}
+	for(int i=0;i<indices.size();i++){
+		res+='[';
+		if(const Constant* ind=dynamic_cast<const Constant*>(indices[i])){
+			res+=ind->get_value();
+		}else{
+			res+='-1';
+		}
+		res+=']';
+	}
+	return res;
+}
 /* choose an unloaded element to use*/
 vector<int>
 ArrayVariable::choose_indics(void) const{
+	if(is_global()){
+		// fprintf(stderr, "item %s\n", name.c_str());
+	}
 	vector<int> ans,res;
+	bool illegal=false;
 	ArrayMgr* mgr=arrMgr;
-	for(int _=0;_<sizes.size();_++){
-		res.clear();
-		for(int i=0;i<mgr->len;i++){
-			if(!mgr->subMgrs[i]->loaded){
+	for(unsigned _=0;_<sizes.size();_++){
+		res.clear();	//all indices in res are legal
+		for(int i=0; i<mgr->len; i++){
+			if(!mgr->subMgrs[i]->loaded||!is_global()){
 				res.push_back(i);
 			}
 		}
+		if(res.size()<=0){
+			illegal=true;
+			break;
+		}
+		assert(res.size()>0);
 		int index=res[rnd_upto(res.size())];
 		ans.push_back(index);
 		mgr=mgr->subMgrs[index];
 	}
+	if(illegal){
+		//still use when all loaded, should be write
+		ans.clear();
+		mgr=arrMgr;
+		for(unsigned _=0;_<sizes.size();_++){
+			int index=rnd_upto(mgr->len);
+			ans.push_back(index);
+			mgr=mgr->subMgrs[index];
+		}
+	}
+
 	return ans;
 }
 /*
@@ -310,6 +347,7 @@ ArrayVariable::itemize(void) const
 	if (type->is_aggregate()) {
 		av->create_field_vars(type);
 	}
+	av->indicesType=0;
 	return av;
 }
 
@@ -321,6 +359,7 @@ ArrayVariable::itemize(const vector<int>& const_indices) const
 	assert(collective == 0);
 	assert(const_indices.size() == sizes.size());
 	ArrayVariable* av = new ArrayVariable(*this);
+	av->indicesType=0;
 	VariableSelector::AllVars.push_back(av);
 	for (i=0; i<sizes.size(); i++) {
 		int index = const_indices[i];
@@ -362,6 +401,7 @@ ArrayVariable::itemize(const std::vector<const Expression*>& indices, Block* blk
 	size_t i;
 	assert(collective == 0);
 	ArrayVariable* av = new ArrayVariable(*this);
+	av->indicesType=1;
 	VariableSelector::AllVars.push_back(av);
 	for (i=0; i<sizes.size(); i++) {
 		av->add_index(indices[i]);
@@ -469,7 +509,12 @@ ArrayVariable::is_variant(const Variable* v) const
 bool
 ArrayVariable::is_global(void) const
 {
-	return parent == 0;
+	// return parent == 0;
+	if (is_field_var())
+	{
+		return field_var_of->is_global();
+	}
+	return (name.find("g_") == 0);
 }
 
 // -------------------------------------------------------------
@@ -813,6 +858,47 @@ ArrayVariable::make_print_index_str(const vector<const Variable *> &cvs) const
 	return str;
 }
 
+void
+ArrayVariable::output_setReadCnt(ostream &out, int cnt) const{
+	if(collective!=0){
+		output_tab(out, 1);
+		out<<Function::get_setVarCnt(get_name_withIndices(), cnt);
+		outputln(out);
+
+	}else{
+		int indent = 1;
+		const vector<const Variable*>& cvs = Variable::get_last_ctrl_vars();
+		for (int i=0; i<get_dimension(); i++) {
+			output_tab(out, indent);
+			out << "for (";
+			out << cvs[i]->get_actual_name();
+			out << " = 0; ";
+			out << cvs[i]->get_actual_name();
+			out << " < " << sizes[i] << "; ";
+			out << cvs[i]->get_actual_name();
+			if (CGOptions::post_incr_operator()) {
+				out << "++)";
+			}
+			else {
+				out << " = " << cvs[i]->get_actual_name() << " + 1)";
+			}
+			outputln(out);
+			output_open_encloser("{", out, indent);
+		}
+		string vname;
+		ostringstream oss;
+		output_with_indices(oss, cvs);
+		vname = oss.str();
+
+		output_tab(out, indent);
+		out<<Function::get_setVarCnt(vname, cnt);
+		
+		for(int i=0; i<get_dimension(); i++) {
+			output_close_encloser("}", out, indent);
+		}
+		outputln(out);
+	}
+}
 /* -------------------------------------------------------------
  *  hash all array items
  ***************************************************************/

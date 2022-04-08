@@ -185,6 +185,9 @@ public:
 	static const Statement* failed_stm;
 
 	static ProbabilityTable<unsigned int, ProbName> *stmtTable_;
+
+	map<const Variable*, int> read_counter;	// record read times in this statement
+	map<pair<const Function*, const Function*>, int> call_counter;	// record call-edge in this statement
 protected:
 	Statement(eStatementType st, Block* parent);
 

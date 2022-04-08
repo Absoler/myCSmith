@@ -34,6 +34,7 @@
 
 #include <string>
 #include <vector>
+#include<set>
 using namespace std;
 #include "Variable.h"
 #include "Type.h"
@@ -60,10 +61,14 @@ class VariableSelector
 {
 	friend class ArrayVariable;
 public:
-    static void set_used(const Variable* var); //zkb
+    static void set_used(const Variable* var, CGContext& context); //zkb
+	static void record_paramUse(const Variable* var, const CGContext& context,  int);
+	static bool isForVar(const Variable* var);
+	static void record_globalUse(const Variable* var, CGContext& context, bool isArrayOp=false);
+
 	static bool is_container_used(const Variable* &field, const vector<Variable*> &vars);
 	static bool is_field_used(const Variable* &container, const vector<Variable*> &vars);
-	static vector<string> generate_globalInfos();	//for pintool
+	static void generate_setGlobalInfos(ostream &out);	//for pintool, generate stmts in C code that call setInfo
 
 	VariableSelector(void) {};
 	static Variable* new_variable(const std::string &name, const Type *type, const Expression* init, const CVQualifiers* qfer);
@@ -110,7 +115,7 @@ public:
 	static void get_all_local_vars(const Block* b, vector<const Variable *> &vars);
 	static const Variable* find_var_by_name(string name);
 
-	static bool check_var_loaded(const Variable* var);	//zkb
+	static bool check_var_loaded(const Variable* var, bool isSource=false);	//zkb
 private:
 	static ArrayVariable* create_array_and_itemize(Block* blk, string name, const CGContext& cg_context, const Type* t, const Expression* init, const CVQualifiers* qfer);
 
@@ -170,6 +175,12 @@ private:
 
 	// flag that indicates whether a new variable has been created
 	static bool var_created;
+
+	//record load times for each global vars
+	static map<const Variable*, int> load_count;
+	//record global vars read in for-block
+	static set<const Variable*> forVars;
+
 };
 
 void OutputGlobalVariables(std::ostream &);

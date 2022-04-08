@@ -58,7 +58,7 @@ using namespace std;
  *
  */
 Lhs *
-Lhs::make_random(CGContext &cg_context, const Type* t, const CVQualifiers* qfer, bool compound_assign, bool no_signed_overflow)
+Lhs::make_random(CGContext &cg_context, const Type* t, const CVQualifiers* qfer, bool compound_assign, bool no_signed_overflow, bool asExpression)
 {
 	Function *curr_func = cg_context.get_current_func();
 	FactMgr* fm = get_fact_mgr_for_func(curr_func);
@@ -98,6 +98,9 @@ Lhs::make_random(CGContext &cg_context, const Type* t, const CVQualifiers* qfer,
 		ERROR_GUARD(NULL);
 		assert(var);
 		bool valid = FactPointTo::opportunistic_validate(var, t, fm->global_facts) && !cg_context.get_effect_stm().is_written(var);
+		if(asExpression&&var->name=="l_9"){
+			printf("l_9 as expr\n");
+		}
 		// we don't want signed integer for some operations, such as ++/-- which has potential of overflowing
 		// it's possible for unsigned bitfield to overflow: consider a 31-bit unsigned field that is promoted to 32-bit signed int before arithematics
 		if (valid && t->eType == eSimple && no_signed_overflow && (var->type->get_base_type()->is_signed() || var->isBitfield_)) {
@@ -110,23 +113,24 @@ Lhs::make_random(CGContext &cg_context, const Type* t, const CVQualifiers* qfer,
 			valid = false;
 		}
 		if(valid){
+			if(var->name=="l_66"){
+				printf("1");
+			}
 			//if this is compound_assign, then var will also be read!
-			vector<const Variable*> targets;
+			map<int, VariableSet> targets;
 			int deref_level = var->type->get_indirect_level() - t->get_indirect_level();
-			if(compound_assign){
-				targets=FactPointTo::get_pointees_under_level(var,deref_level,fm->global_facts);
-			}else{
-				targets=FactPointTo::get_pointees_under_level(var,deref_level-1,fm->global_facts);
-			}
-			if(var->isArray&&targets.size()>1){
-				printf("3");
-			}
-			for(const Variable* v:targets){
-				if(VariableSelector::check_var_loaded(v)){
-					valid=false;
-					break;
+			int read_level = ((compound_assign||asExpression)?deref_level:deref_level-1);
+			targets=FactPointTo::get_pointees_under_level(var, read_level, fm->global_facts);
+			
+			for(int i=0; i<=read_level; i++){
+				for(const Variable* v:targets[i]){
+					if(VariableSelector::check_var_loaded(v, (v==var))){
+						valid=false;
+						break;
+					}
 				}
 			}
+			
 		}
 		if (valid) {
 			assert(var);
@@ -134,27 +138,25 @@ Lhs::make_random(CGContext &cg_context, const Type* t, const CVQualifiers* qfer,
 			if (tmp.visit_facts(fm->global_facts, cg_context)) {
 				// bookkeeping
 				int deref_level = tmp.get_indirect_level();
+				int read_level = ((compound_assign||asExpression)?deref_level:deref_level-1);
 				if(deref_level<0||deref_level>1){
 					// printf("write %d\n",deref_level);
 				}
-				vector<const Variable*> targets;
-				// if(deref_level>0){
-					if(compound_assign){
-						targets=FactPointTo::get_pointees_under_level(var,deref_level,fm->global_facts);
-					}else{
-						targets=FactPointTo::get_pointees_under_level(var,deref_level-1,fm->global_facts);
+				map<int, VariableSet> targets;
+				targets=FactPointTo::get_pointees_under_level(var, read_level, fm->global_facts);
+				for(int i=0; i<=read_level; i++){
+					for(const Variable* var:targets[i]){
+						if(var->is_argument()&&i<read_level){
+							VariableSelector::record_paramUse(var, cg_context, read_level-i);
+						}
+						VariableSelector::set_used(var, cg_context);
 					}
-					for(const Variable* var:targets){
-						VariableSelector::set_used(var);
-					}
-				// }
+				}
 				if (deref_level > 0) {
 					incr_counter(Bookkeeper::write_dereference_cnts, deref_level);
 				}
 				Bookkeeper::record_volatile_access(var, deref_level, true);
-				if(var->isArray||var->name=="g_28"){
-					printf("2");
-				}
+				
 				return new Lhs(*var, t, compound_assign);
 			}
 			// restore the effects

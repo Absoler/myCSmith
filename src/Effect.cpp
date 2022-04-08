@@ -176,7 +176,7 @@ Effect::write_var_set(const std::vector<const Variable *>& vars)
 }
 
 /*
- *
+ merge two effects
  */
 void
 Effect::add_effect(const Effect &e, bool include_lhs_effects)

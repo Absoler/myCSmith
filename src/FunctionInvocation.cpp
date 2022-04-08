@@ -87,7 +87,7 @@ FunctionInvocation::make_random(bool is_std_func,
 	// If we are looking for a program-defined function, try to find one.
 	if (!is_std_func) {
 		Function* callee = NULL;
-		if (pure_rnd_flipcoin(50)) {
+		if (pure_rnd_flipcoin(75)) {
 			callee = Function::choose_func(get_all_functions(), cg_context, type, qfer);
 		}
 		if (callee != NULL) {
@@ -274,6 +274,12 @@ FunctionInvocation::make_random_binary(CGContext &cg_context, const Type* type)
 	// Currently, the "fix" is handled in `FunctionInvocationBinary::Output'.
 	fi->param_value.push_back(lhs);
 	fi->param_value.push_back(rhs);
+	// if(rhs->term_type==eVariable){
+	// 	ExpressionVariable* ev=(ExpressionVariable*)rhs;
+	// 	if(ev->get_var()->is_global()&&ev->get_var()->is_field_var()){
+	// 		printf("get %s\n in funcInvok\n", ev->get_var()->name.c_str());
+	// 	}
+	// }
 	return fi;
 }
 

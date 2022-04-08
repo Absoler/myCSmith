@@ -122,7 +122,24 @@ public:
 	bool is_builtin;
 	int  visited_cnt;
 	Effect accum_eff_context;
+	int id;
+	// record read num of params (for the whole, not a field or member), with different deref-level.
+	// <p1, <1, 2>> means *p1 has been read twice in this function
+	// param may be out of restriction of read, this counter take for-situation and different-places-reads into account
+ 	std::map<const Variable*, std::map<int, int>> param_read_counter;
 
+	// record read num of globals (the whole var) in this function, mainly for forVar, but contain all globals
+	std::map<const Variable*, int> global_counter;
+
+	static std::map<std::pair<const Function*, const Function*>, int> callGraph;	// <<func_1, func_2>, 2> means in func_1's body, func_2 was called twice
+	static map<const Variable*, int> totalCounter;		//dynamic read times of forVars in program, considering for-loop and function call
+	static map<const Function*, int> calledCounter;		// record number of times funcs are called
+	static void cal_Counter();
+
+	static Function* first_func;
+
+	static string get_setVarCnt(string name, int cnt);
+	static void generate_setReadCnt(std::ostream& out);	// generate stmts that call setReadCnt to transmit cnt info
 private:
 	static int deleteFunction(Function* func);
 

@@ -172,7 +172,7 @@ FactPointTo::size() const
 {
 	return point_to_vars.size();
 }
-
+/* send rhs's facts to lhs*/
 vector<const Fact*>
 FactPointTo::rhs_to_lhs_transfer(const vector<const Fact*>& facts, const vector<const Variable*>& lvars, const Expression* rhs)
 {
@@ -273,6 +273,7 @@ FactPointTo::rhs_to_lhs_transfer(const vector<const Fact*>& facts, const vector<
 	return empty;
 }
 
+/* for lhs = rhs, calculate lhs's facts after this move*/
 std::vector<const Fact*>
 FactPointTo::abstract_fact_for_assign(const std::vector<const Fact*>& facts, const Lhs* lhs, const Expression* rhs)
 {
@@ -715,23 +716,24 @@ FactPointTo::merge_pointees_of_pointer(const Variable* ptr, int indirect, const 
 	return tmp;
 }
 
-std::vector<const Variable*> 
+std::map<int, std::vector<const Variable*>>
 FactPointTo::get_pointees_under_level(const Variable* ptr, int indirect, const std::vector<const Fact*>& facts){
-	vector<const Variable*> res,tmp;
+	vector<const Variable*> tmp;
+	map<int, vector<const Variable*>> res;
 	if(indirect<0){
 		return res;
 	}
 	tmp.push_back(ptr);
-	res.push_back(ptr);
+	res[0].push_back(ptr);
 	//[0, indirect], a total of indirect+1 variables
 	//indirect_level 0 means the ptr itself, of course it will be read if indirect > 0
 	//if it's a 1-level pointer dereffed for writing outside, then the arg <indirect> is 0
 	if(indirect>1){
 		// printf("1");
 	}
-	while(indirect-- >0){
+	for(int i=1; i<=indirect; i++){
 		tmp=FactPointTo::merge_pointees_of_pointers(tmp, facts);
-		res.insert(res.end(),tmp.begin(),tmp.end());
+		res[i].insert(res[i].begin(), tmp.begin(),tmp.end());
 	}
 	return res;
 }

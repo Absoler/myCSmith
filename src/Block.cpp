@@ -117,11 +117,39 @@ Block::make_dummy_block(CGContext &cg_context)
 	return b;
 }
 
+bool
+Block::is_loop() const{
+	const Block* blk=this;
+	while(blk){
+		if(blk->looping){
+			return true;
+		}
+		blk=blk->parent;
+	}
+	return false;
+}
+int 
+Block::get_loop_num(int n) const{
+	int res=1;
+	if(!is_loop()){
+		return res;
+	}
+	const Block* blk=this;
+	while(blk && n!=0){
+		int cur=(blk->looping?blk->loopNum:1);
+		res*=cur;
+		if(n>0&&blk->looping){
+			n--;
+		}
+		blk=blk->parent;
+	}
+	return res;
+}
 /*
  *
  */
 Block *
-Block::make_random(CGContext &cg_context, bool looping)
+Block::make_random(CGContext &cg_context, bool looping, int init, int test, int incr, eBinaryOps op)
 {
 	//static int bid = 0;
 	DEPTH_GUARD_BY_TYPE_RETURN(dtBlock, NULL);
@@ -132,6 +160,40 @@ Block::make_random(CGContext &cg_context, bool looping)
 	Block *b = new Block(cg_context.get_current_block(), CGOptions::max_block_size());
 	b->func = curr_func;
 	b->looping = looping;
+	if(looping){
+		b->init=init;
+		b->test=test;
+		b->incr=incr;
+		if(op==eCmpGe){
+			if(init<test){
+				b->loopNum=0;
+			}else{
+				b->loopNum = (init-test)/incr + 1;
+			}
+		}else if(op==eCmpGt){
+			if(init<=test){
+				b->loopNum=0;
+			}else{
+				b->loopNum = (init-test-1)/incr +1;
+			}
+		}else if(op==eCmpLe){
+			if(init>test){
+				b->loopNum=0;
+			}else{
+				b->loopNum = (test-init)/incr +1;
+			}
+		}else if(op==eCmpLt){
+			if(init>=test){
+				b->loopNum=0;
+			}else{
+				b->loopNum = (test-init-1)/incr +1;
+			}
+		}else{
+			assert(0);
+		}
+	}else{
+		b->loopNum=1;
+	}
 	// if there are induction variables, we are in a loop that traverses array(s)
 	b->in_array_loop = !(cg_context.iv_bounds.empty());
 	//b->stm_id = bid++;
@@ -160,6 +222,11 @@ Block::make_random(CGContext &cg_context, bool looping)
 		if (!s)
 			break;
 		b->stms.push_back(s);
+		// move temp counter from cg_context to s
+		s->read_counter=cg_context.stm_read_Counter;
+		cg_context.stm_read_Counter.clear();
+		s->call_counter=cg_context.stm_call_Counter;
+		cg_context.stm_call_Counter.clear();
 		if (s->must_return()) {
 			break;
 		}
@@ -778,6 +845,19 @@ Block::post_creation_analysis(CGContext& cg_context, const Effect& pre_effect)
 			size_t i, len;
 			len = stms.size();
 			for (i=index; i<len; i++) {
+				// undo read counter in stms[i]
+				for(auto p:stms[i]->read_counter){
+					const Variable* var=p.first;
+					int cnt=p.second;
+					func->global_counter[var]-=cnt;
+				}
+				// undo call counter in stms[i]
+				for(auto p:stms[i]->call_counter){
+					const Function* caller=p.first.first;
+					const Function* callee=p.first.second;
+					int cnt=p.second;
+					Function::callGraph[make_pair(caller, callee)]-=cnt;
+				}
 				remove_stmt(stms[i]);
 				i = index-1;
 				len = stms.size();

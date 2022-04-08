@@ -96,6 +96,14 @@ ExpressionFuncall::make_random(CGContext &cg_context, const Type* type, const CV
 	}
 	else {
 		e = new ExpressionFuncall(*fi);
+		// here we create a successful funcall
+		if(FunctionInvocationUser* invoke=dynamic_cast<FunctionInvocationUser*>(fi)){
+			int num=cg_context.get_current_block()->get_loop_num();
+			const Function* caller=cg_context.get_current_func();
+			const Function* callee=invoke->get_func();
+			Function::callGraph[make_pair(caller, callee)]+=num;
+			cg_context.stm_call_Counter[make_pair(caller, callee)]+=num;
+		}
 	}
 	return e;
 }

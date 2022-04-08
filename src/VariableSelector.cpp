@@ -41,6 +41,7 @@
 #include <cassert>
 #include <map>
 #include <set>
+#include<stack>
 
 #include "Common.h"
 #include "Block.h"
@@ -78,6 +79,13 @@ using namespace std;
 vector<Variable *> VariableSelector::AllVars;
 vector<Variable *> VariableSelector::GlobalList;
 vector<Variable *> VariableSelector::GlobalNonvolatilesList;
+map<const Variable*, int> VariableSelector::load_count;
+
+set<const Variable*> VariableSelector::forVars;
+bool VariableSelector::isForVar(const Variable* var){
+    return (forVars.find(var)!=forVars.end());
+}
+
 bool VariableSelector::var_created = false;
 
 class VariableSelectFilter : public Filter {
@@ -310,7 +318,7 @@ VariableSelector::has_eligible_volatile_var(const vector<Variable *> &vars, cons
     }
     return false;
 }
-
+/*select a var randomly, if var is father array, then const itemize*/
 Variable *
 VariableSelector::choose_ok_var(const vector<Variable *> &vars) {
     int len = vars.size();
@@ -332,7 +340,7 @@ VariableSelector::choose_ok_var(const vector<Variable *> &vars) {
     }
     return v;
 }
-/* choose an array element of an array from vars*/
+/*select a var randomly, if var is father array, then const itemize*/
 const Variable *
 VariableSelector::choose_ok_var(const vector<const Variable *> &vars) {
     int len = vars.size();
@@ -376,58 +384,242 @@ VariableSelector::choose_visible_read_var(const Block *b, vector<const Variable 
     return choose_ok_var(ok_vars);
 }
 
+/*
+    for a param, we record 
+*/
+void VariableSelector::record_paramUse(const Variable* var, const CGContext& context, int endLevel){
+    if(!var->is_argument()){   
+        return ;
+    }
+    if(var->is_field_var()){
+        // read of p.field will be treated as p is read
+        var=var->get_top_container();
+    }
+    if(var->name=="p_55"){
+        printf("1");
+    }
+    assert(!var->isArray);
+    const Block* blk=context.get_current_block();
+    Function* func=context.get_current_func();
+    int num=(blk->is_loop()?blk->get_loop_num():1);
+    for(int i=1;i<=endLevel;i++){
+        func->param_read_counter[var][i]+=num;
+    }
+}
 //zkb
-void VariableSelector::set_used(const Variable *var) {
+void VariableSelector::set_used(const Variable *var, CGContext& context) {
     //find the used target in GlobalList by name, and set its loaded = true
-    if(var->is_union_field()){
-        //if a field of union is loaded, it's equivalent to the union is taken
-        //for now, the depth of struct/union is only 1
-        string containerName=var->field_var_of->name;
-        for(Variable *v: GlobalList){
-            if(v->type->eType==eUnion&&v->name==containerName){
-                v->loaded=true;
-            }
-        }
-    }else if(var->is_field_var()){
+    bool get=false;
+    if(var->name=="g_1343.f3.f1"){
+        get=true;
+        printf("set g_1343.f3.f1\n");
+    }
+   
+    assert(!( (!var->get_top_container()->isArray) &&var->is_array_field()));   //make sure there's not an array embedded in an aggregate
+    if(var->isArray&&var->is_global()){
+        var->is_global();
+        printf("1");
+    }
+    // assert(var->is_argument()||var->is_local()||var->is_global());
+
+    if(var->is_field_var()&&!var->get_top_container()->isArray){
+        //pure field, 
+        assert(!var->isArray);
+        //I call this field-chain, maybe this part could be re-written with recursion
         const Variable* topContainer=var->get_top_container();
         if(topContainer->is_global()){
             for(Variable *v: GlobalList){
                 if(v->name==topContainer->name){
                     vector<int> id_list=var->get_field_id_list();
-                    Variable* realField=v;
+                    Variable* curVar=v;
                     for(int id:id_list){
-                        realField->field_taken=true;
-                        realField=realField->field_vars[id];
+                        curVar->field_taken=true;
+                        if(curVar->type->eType==eUnion){
+                            //if a field of union is loaded, it's equivalent to the union is taken
+                            curVar->loaded=true;
+                            break;
+                        }
+                        curVar=curVar->field_vars[id];
                     }
-                    realField->loaded=true;
+                    curVar->loaded=true;
+                    assert(v==topContainer);
+                    // set global counter
+                    
+                    // record this very var so as to compare in pintool conveniently
+                    record_globalUse(var, context);
+                }
+            }    
+        }
+
+    }else if(var->isArray||var->get_top_container()->isArray){
+        const ArrayVariable* av;
+        if(!var->isArray){
+            av=dynamic_cast<const ArrayVariable*>(var->get_top_container());
+            // make av point from a field to its topContainer, which is an array element
+        }else{
+            av=dynamic_cast<const ArrayVariable*>(var);
+        }
+        const ArrayVariable* fa=dynamic_cast<const ArrayVariable*>(av->get_collective());
+        // assert(av->indicesType==0||av->indicesType==1); // fail
+        assert(fa!=NULL);
+        if(fa!=av){
+            assert((av->get_indices()).size()>0);
+        }
+        if(fa->is_global()){
+            bool haveIndices=false;
+            bool constInd=false;
+
+            bool get=false;
+            /*
+            contain three situation:
+                1. const index
+                2. variant index <=> array_loop
+                3. av==fa,
+                (4. av!=fa, no index, either) (should not occur)
+            */
+            if(fa!=av){
+                constInd=true;
+                vector<const Expression*> indicesExp=av->get_indices();
+                haveIndices=(indicesExp.size()>0);
+                vector<int> indices;
+
+                //collect array indices
+                for(const Expression* index:indicesExp){
+                    if(const Constant* constant=dynamic_cast<const Constant*>(index)){
+                        if(constant->get_type().eType==eSimple){
+                            int val=stoi(constant->get_value());
+                            indices.push_back(val);
+                        }
+                    }else{
+                        indices.push_back(-1);
+                        constInd=false;
+                    }
+                }
+                if(indices.size()!=(av->get_sizes()).size()){
+                    if(fa!=var&&fa==av){
+                        printf("\nfa!=var&&fa==av\n");
+                    }
+                    if((void*)var==(void*)fa){
+                        printf("(void*)var==(void*)fa\n");
+                    }
+                    if(fa!=av){
+                        printf("%d\n",indicesExp.size());
+                        assert((av->get_indices()).size()>0);
+                    }
+                    get=true;
+                    printf("\nassert %s %d\n",av->get_name_withIndices().c_str(), haveIndices);
+                    printf("%d\n",indices.size());
+                    for(int v:indices){
+                        printf(" %d\n",v);
+                    }
+                    printf("%d\n",(av->get_sizes()).size());
+                    for(int v:av->get_sizes()){
+                        printf(" %d\n",v);
+                    }
+                }
+                assert(indices.size()==(av->get_sizes()).size());
+                //set arrMgr
+                ArrayMgr *mgr=fa->arrMgr;
+                stack<ArrayMgr*> mgrStk;
+                
+                for(unsigned i=0;i<indices.size();++i){
+                    int index=indices[i];
+                    mgr->part_loaded=true;
+                    if(index==-1){
+                        // index = -1 means it's not a constant, we think that it access all for sound
+                        mgr->loaded=true;
+                        break;
+                    }else{
+                        mgrStk.push(mgr);
+                        // }
+                    }
+                    mgr=mgr->subMgrs[index];
+                }
+                // tail mgr
+                mgr->part_loaded=true;
+                if(mgr->subMgrs.size()==0){
+                    mgr->loaded=true;
+                }
+                
+                //if all subMgrs are loaded, then mgr is loaded
+                while(!mgrStk.empty()){
+                    mgr=mgrStk.top();
+                    mgrStk.pop();
+                    if(mgr->loaded!=true){
+                        bool success=true;
+                        for(int i=0;i<mgr->len;i++){
+                            if(!mgr->subMgrs[i]->loaded){
+                                success=false;
+                                break;
+                            }
+                        }
+                        if(success){
+                            mgr->loaded=true;
+                        }
+                    }
                 }
             }
+
+            assert(constInd&&av->indicesType==0 || !constInd && av->indicesType==1);
+            if(av==fa){
+                // may because facts only contain father array
+                // tricky situation, set all-loaded for now
+                ArrayMgr *mgr=fa->arrMgr;
+                mgr->part_loaded=true;
+                mgr->loaded=true;
+            }
             
-            
+            if(haveIndices&&!constInd){
+                printf("%s must be in an arrayLoop\n",av->name.c_str());
+            }
+
+            constInd &= haveIndices;    // must do this
+            if(constInd){
+                record_globalUse(var, context);
+            }else if(haveIndices){
+                record_globalUse(var, context, true);
+            }else{
+                if(get){
+                    printf("%s set fa\n", var->name.c_str());
+                }
+                // when var!=fa and it didn't have indices either, it may come from facts derefed, not clear yet
+                record_globalUse(fa, context);
+            }
         }
-        // string containerName=var->get_top_container()->name;
-        // int id=var->get_field_id();
-        // for(Variable *v: GlobalList){
-        //     if(v->name==containerName){
-        //         v->field_vars[id]->loaded=true;
-        //     }
-        // }
     }else{
-        if(!var->is_global()){
-            return;
-        }
-        for (Variable *v: GlobalList) {
-            if (v->name == var->name) {
-                v->loaded = true;
-                if(!var->loaded){
-                    // printf("1");
-                    //shouldn't happen
+        if(var->is_global()){
+            Variable* v=0;
+            for(Variable* _:GlobalList){
+                if(var==_){
+                    v=_; break;
                 }
             }
+            v->loaded=true;
+            
+            record_globalUse(var, context);
         }
     }
 }
-vector<string> VariableSelector::generate_globalInfos(){
+
+void VariableSelector::record_globalUse(const Variable* var, CGContext &context, bool isArrayOp){
+    if(context.get_current_block()->is_loop()){
+        forVars.insert(var);
+        int loopNum=context.get_current_block()->get_loop_num();
+        if(isArrayOp){
+            const ArrayVariable* av=dynamic_cast<const ArrayVariable*>(var);
+            int dimension=av->get_sizes().size();
+            int array_loopNum=context.get_current_block()->get_loop_num(dimension);
+            loopNum /= array_loopNum;
+        }
+        context.get_current_func()->global_counter[var]+=loopNum;
+        context.stm_read_Counter[var]+=loopNum;
+    }else{
+        context.get_current_func()->global_counter[var]+=1;
+        context.stm_read_Counter[var]+=1;
+    }
+}
+
+void VariableSelector::generate_setGlobalInfos(ostream &out){
     std::set<string> names;
     for(Variable *v:GlobalList){
         names.insert(v->name);
@@ -435,9 +627,10 @@ vector<string> VariableSelector::generate_globalInfos(){
     std::vector<string> infos;
     for(string name:names){
         // infos.push_back("    getInfo((unsigned long)(&"+name+"),sizeof("+name+"));");
-        infos.push_back("    setInfo((unsigned long)(&"+name+"),sizeof("+name+"),\""+name+"\");");
+        output_tab(out, 1);
+        out<<("setInfo((unsigned long)(&"+name+"),sizeof("+name+"),\""+name+"\");");
+        outputln(out);
     }
-    return infos;
 }
 
 /*
@@ -459,26 +652,29 @@ VariableSelector::is_container_used(const Variable* &field, const vector<Variabl
 
 /*
 check wether one var has been loaded.
-take aggregate, field situation carefully 
+take aggregate, field, array situation carefully 
 */
 bool
-VariableSelector::check_var_loaded(const Variable* var){
-    bool loaded=false;
+VariableSelector::check_var_loaded(const Variable* var, bool isSource){
+    bool ban=false;
     if(var->is_global()&&var->loaded){
-        loaded=true;
+        ban=true;
     }
     if(var->is_global()&&var->is_aggregate()){
         if(var->field_taken){
-            loaded=true;
+            ban=true;
         }
     }
-    if(var->is_field_var()){
+    if(var->is_field_var()&&(!var->get_top_container()->isArray)){
         //var is a field
+        if(var->name=="g_10[1].f1"){
+            printf("12");
+        }
         const Variable* container=var->get_top_container();    //may be multi-level nesting
         vector<int> id_list=var->get_field_id_list();
         if(container->is_global()&&container->loaded){
             //once loaded as a whole
-            loaded=true;
+            ban=true;
         }
 
         if(container->is_global()){
@@ -487,11 +683,73 @@ VariableSelector::check_var_loaded(const Variable* var){
                 realField=realField->field_vars[id];
             }
             if(realField->loaded){
-                loaded=true;
+                ban=true;
             }
         }
+
+        if(container->isArray){
+            var=container;
+            //put container in the follow array check
+        }
     }
-    return loaded;
+    if(var->isArray||var->get_top_container()->isArray){
+        /*
+        same as set_used, we believe there are 3 situation:
+        1. const-index array
+        2. var-index array
+        3. father array
+        */
+        const ArrayVariable* av=NULL;
+        if(!var->isArray){
+            av=dynamic_cast<const ArrayVariable*>(var->get_top_container());
+        }else{
+            av=dynamic_cast<const ArrayVariable*>(var);
+        }
+        
+        const ArrayVariable* fa=dynamic_cast<const ArrayVariable*>(av->get_collective());
+        if(fa!=av){
+            vector<const Expression*> indicesExp=av->get_indices();
+            assert(indicesExp.size()>0);    //assert if not father array, then it doesn't have indices
+            vector<int> indices;
+            //collect array indices
+            for(const Expression* index:indicesExp){
+                if(const Constant* constant=dynamic_cast<const Constant*>(index)){
+                    if(constant->get_type().eType==eSimple){
+                        int val=stoi(constant->get_value());
+                        indices.push_back(val);
+                    }
+                }else{
+                    indices.push_back(-1);
+                }
+            }
+            
+            ArrayMgr* mgr=fa->arrMgr;
+            for(int index:indices){
+                if(index==-1||mgr->loaded){
+                    break;
+                }
+                if(index!=-1){
+                    mgr=mgr->subMgrs[index];
+                }
+                
+            }
+            ban=mgr->loaded;
+            // if(av->collective==0){
+            //     ban=av->arrMgr->loaded;
+            // }else{
+            //     ban=dynamic_cast<const ArrayVariable*>(av->get_collective())->arrMgr->loaded;
+            // }
+        }else{
+            //we're checking a father array, and this func may only be called in choose_var, different with select_must_use,
+            //so this var may only work as a const-index element, for normal, if its loaded is false, then we can find an element not used.
+            //however, if this var comes from pointer-deref, so it has allocated indices without containing this information in facts, so for sound we let ban=part_loaded
+            if(isSource)
+                ban=fa->arrMgr->loaded;
+            else
+                ban=fa->arrMgr->part_loaded|fa->arrMgr->loaded;
+        }
+    }
+    return ban;
 }
 // --------------------------------------------------------------
 /*
@@ -563,70 +821,30 @@ VariableSelector::choose_var(vector<Variable *> vars,
             continue;
         }
 
-
         //-1 means ref(&), >0 means deref(*)
         int deref_level = (*i)->type->get_indirect_level() - type->get_indirect_level();
-        
+        int read_level = (access==Effect::READ?deref_level:deref_level-1);
         //targets contain all possible loaded vars in this current operation(use this var) when considering derefence and READ or WRITE
-        vector<const Variable*> targets;
-        if(access==Effect::READ){
-            targets=FactPointTo::get_pointees_under_level((*i),deref_level,fm->global_facts);
-        }else if(access==Effect::WRITE){
-            targets=FactPointTo::get_pointees_under_level((*i),deref_level-1,fm->global_facts);
-        }
+        map<int, VariableSet> targets;
+        targets=FactPointTo::get_pointees_under_level((*i), read_level, fm->global_facts);
         
         
         //if one of targets has been read, loaded will be true and this var can't be used
         bool loaded=false;
-        for(const Variable* var:targets){
-            /* use check_var_loaded()*/
-            // if(var->is_global()&&var->loaded){
-            //     loaded=true;
-            // }
-            // if(var->is_global()&&var->is_aggregate()){
-            //     //var is struct/union
-            //     /**/
-            //     // for(Variable* field:var->field_vars){
-            //     //     if(field->loaded){
-            //     //         loaded=true;
-            //     //         break;
-            //     //     }
-            //     // }
-            //     if(var->field_taken){
-            //         loaded=true;
-            //     }
-            // }
-            // if(var->is_field_var()){
-            //     //var is a field
-            //     const Variable* container=var->get_top_container();    //may be multi-level nesting
-            //     vector<int> id_list=var->get_field_id_list();
-            //     if(container->is_global()&&container->loaded){
-            //         //once loaded as a whole
-            //         loaded=true;
-            //     }
-            //
-            //     if(container->is_global()){
-            //         const Variable* ctnrField=container;
-            //         for(int id:id_list){
-            //             ctnrField=ctnrField->field_vars[id];
-            //         }
-            //         if(ctnrField->loaded){
-            //             loaded=true;
-            //         }
-            //     }
-            //  
-            //     // int id=var->get_field_id();
-            //     // if(container->is_global() && container->field_vars[id]->loaded){
-            //     //     //this very field was once read
-            //     //     loaded=true;
-            //     // }
-            // }
-            loaded=check_var_loaded(var);
-            if(loaded) break;
+        for(int level=0; level<=read_level; level++){
+            for(const Variable* var:targets[level]){
+                /* use check_var_loaded()*/
+
+                bool isSouce=(var==(*i));
+                loaded=check_var_loaded(var, isSouce);
+                if(loaded) break;
+            }
         }
         if(loaded){
             continue;
         }
+        // assert(targets.size()>0);    // shouldn't happen
+
         /* don't need restrict loop now*/
         //if in a loop and one of targets is(or part of) global, then this var will be abandoned even if its loaded=false
         // bool global_inLoop=false;
@@ -660,6 +878,9 @@ VariableSelector::choose_var(vector<Variable *> vars,
         if (is_eligible_var((*i), deref_level, access, cg_context)) {
             // Otherwise, this is an acceptable choice.
             ok_vars.push_back(*i);
+            if((*i)->name=="g_10[1].f1"){
+                printf("1");
+            }
         }
     }
 
@@ -935,7 +1156,7 @@ VariableSelector::find_all_non_array_visible_vars(const Block *b, vector<Variabl
         }
     }
 }
-
+/* comparing to "find_all_non_array_visible_vars", remove globals*/
 void 
 VariableSelector::find_all_non_array_local_vars(const Block *b, vector<Variable *> &vars){
     size_t i;
@@ -1598,6 +1819,10 @@ VariableSelector::select_array(const CGContext &cg_context) {
 
         ArrayVariable *av = dynamic_cast<ArrayVariable *>(vars[i]);
         assert(av);
+        if(av->arrMgr->part_loaded||av->arrMgr->loaded){
+            // now I can't distinguish read or write, so limit them all if part_loaded
+            continue;
+        }
         if (av->collective != 0)
             continue;
 
@@ -1635,7 +1860,7 @@ VariableSelector::itemize_array(CGContext &cg_context, const ArrayVariable *av) 
         unsigned int dimen_len = av->get_sizes()[i];
         map<const Variable *, unsigned int>::iterator iter;
         for (iter = cg_context.iv_bounds.begin(); iter != cg_context.iv_bounds.end(); ++iter) {
-            if (iter->second != INVALID_BOUND && iter->second < dimen_len) {
+            if (iter->second != INVALID_BOUND && iter->second < dimen_len) {    // in case that iv's range exceed the size
                 const Variable *iv = iter->first;
                 if (!CGOptions::signed_char_index() && iv->type->is_signed_char())
                     continue;
@@ -1670,7 +1895,7 @@ VariableSelector::itemize_array(CGContext &cg_context, const ArrayVariable *av) 
         if (dimen_len - cg_context.iv_bounds[v] > 1) {
             offset = rnd_upto(dimen_len - cg_context.iv_bounds[v]);
         }
-        if (offset) {
+        if (offset) {   //[iv+offset] make sure the last element is accessed
             const FunctionInvocation *fi = new FunctionInvocationBinary(eAdd, ev, new Constant(get_int_type(),
                                                                                                StringUtils::int2str(
                                                                                                        offset)), 0);
@@ -1761,18 +1986,11 @@ VariableSelector::find_var_by_name(string name) {
  */
 void
 VariableSelector::doFinalization(void) {
-    for(Variable* var:AllVars){
-        if(var->isArray){
-            ArrayVariable* ar=dynamic_cast<ArrayVariable*>(var);
-            // printf("%s\n",ar->name.c_str());
-        }
+    printf("\nall forVars:\n");
+    for(const Variable* v:forVars){
+        printf("%s\n",v->name.c_str());
     }
-    for(Variable* var:GlobalList){
-        if(var->isArray){
-            ArrayVariable* ar=dynamic_cast<ArrayVariable*>(var);
-            // printf("12");
-        }
-    }
+    
     size_t i;
     for (i = 0; i < AllVars.size(); i++) {
         delete AllVars[i];

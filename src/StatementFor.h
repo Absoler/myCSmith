@@ -77,6 +77,11 @@ public:
 
 	virtual void Output(std::ostream &out, FactMgr* fm, int indent = 0) const;
 	bool array;	//true means generated in StmtArrayOp::make_random
+
+	static int get_init_value(const StatementAssign* init);	//get initial value of ctrl-var
+	static int get_test_value(const Expression* test);		//get the terminal value of ctrl-var
+	static int get_incr_value(const StatementAssign* init);	//get the step
+	static eBinaryOps get_test_op(const Expression* test);	//get test_op
 private:
 	// XXX --- `init' and `incr' have the "wrong types."  Should be exprs.
 	const StatementAssign &init;

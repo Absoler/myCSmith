@@ -1,0 +1,8 @@
+#! /bin/bash
+cnt=$(find problem/ -type f | wc -l)
+(( cnt=cnt/2 ))
+echo $cnt
+(( cnt++ ))
+cp checkRead.out problem/${cnt}checkRead.out
+cp runtime/output2.c problem/${cnt}output.c
+cp runtime/output2 problem/${cnt}output

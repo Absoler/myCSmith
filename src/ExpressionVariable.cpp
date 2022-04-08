@@ -55,8 +55,9 @@
  *
  */
 ExpressionVariable *
-ExpressionVariable::make_random(CGContext &cg_context, const Type* type, const CVQualifiers* qfer, bool as_param, bool as_return)
+ExpressionVariable::make_random(CGContext &cg_context, const Type* type, const CVQualifiers* qfer, bool as_param, bool as_return, map<int,int> *read_counter)
 {
+	// read_counter belong to the func which choose this var as arg
 	DEPTH_GUARD_BY_TYPE_RETURN(dtExpressionVariable, NULL);
 	Function *curr_func = cg_context.get_current_func();
 	FactMgr* fm = get_fact_mgr_for_func(curr_func);
@@ -100,21 +101,66 @@ ExpressionVariable::make_random(CGContext &cg_context, const Type* type, const C
 			continue;
 		}
 		int valid = FactPointTo::opportunistic_validate(var, type, fm->global_facts);
+		
+		// if this var will be an arg, check whether it contain global that will be read in target function (with the same deref-level) 
+		VariableSet globals_in_param;	// these vars will be read if this var is qualified for arg
+		if(as_param && read_counter!=NULL && valid){
+			int indirect=var->type->get_indirect_level() - type->get_indirect_level();
+			map<int, VariableSet> vars=FactPointTo::get_pointees_under_level(var,indirect,fm->global_facts);
+			for(int i=1;i<=indirect&&valid; i++){
+				if(read_counter->find(i)==read_counter->end()){
+					//接下来的解引用不会在函数中被访问
+					break;
+				}
+				for(const Variable* v:vars[i]){
+					if(v->is_global()){
+						if((*read_counter)[i]>1 || ((*read_counter)[i]==1&&VariableSelector::check_var_loaded(v))){	//read more than once in the func or read once and it's already used
+							valid=false;
+							break;
+						}else{
+							if((*read_counter)[i]==1)
+								globals_in_param.push_back(v);
+						}
+					}
+				}
+			}
+		}
+		
 		if (valid) {
 			ExpressionVariable tmp(*var, type);
 			if (tmp.visit_facts(fm->global_facts, cg_context)) {
 				ev = tmp.get_indirect_level() == 0 ? new ExpressionVariable(*var) : new ExpressionVariable(*var, type);
-				
+				bool get=false;
+				if(var->name=="g_1343.f3.f1"){ 
+					get=true;
+						printf("ev get g_1343.f3.f1\n");
+				}
 				int indirect=tmp.get_indirect_level();
 				cg_context.curr_blk = cg_context.get_current_block();
 				// if(indirect>0&&!var->is_global()){
 				// 	printf("%d\n",tmp.get_indirect_level());
 				// }
-				if(var->isArray&&indirect>0)
+				if(var->is_argument()&&indirect>0)
 					printf("3");
-				vector<const Variable*> targets=FactPointTo::get_pointees_under_level(var,indirect,fm->global_facts);
-				for(const Variable* var:targets){
-					VariableSelector::set_used(var);
+				map<int, VariableSet> targets=FactPointTo::get_pointees_under_level(var,indirect,fm->global_facts);
+				
+				for(int i=0; i<=indirect; i++){
+					for(const Variable* var:targets[i]){
+						if(var->is_argument()){
+							VariableSelector::record_paramUse(var, cg_context, indirect-i);
+						}
+						if(get&&var->name=="g_1343.f3.f1"){
+							printf("will set_used\n");
+						}
+						VariableSelector::set_used(var, cg_context);
+					}
+				}
+				// var is selected as arg and these globals will be deref-ed and read in function
+				if(globals_in_param.size()>0)
+					printf("in %s\n",var->name.c_str());
+				for(const Variable* v:globals_in_param){
+					printf("will read %s\n", v->name.c_str());
+					VariableSelector::set_used(v, cg_context);
 				}
                 // VariableSelector::set_used(var);    //zkb
 				//set state for dereference

@@ -43,13 +43,14 @@ using namespace std;
 class ArrayMgr{
 	public:
 	bool loaded;
-	bool part_loaded;
+	bool part_loaded;	// when check this, consider loaded simultaneously in case of forgetting set this  
 	std::vector<ArrayMgr*> subMgrs;
 	int len,empty;
 	ArrayMgr():loaded(false),part_loaded(false),len(0){}
 	ArrayMgr(vector<unsigned int> sizes){
 		if(!sizes.empty()){
 			len=sizes.back();
+			empty=len;
 			sizes.pop_back();
 			subMgrs.resize(len);
 			for(int i=0;i<len;i++){
@@ -107,9 +108,12 @@ public:
 	string build_initializer_str(const vector<string>& init_strings) const;
 	string build_init_recursive(size_t dimen, const vector<string>& init_strings) const;
 
-	const ArrayVariable* collective;
+	void output_setReadCnt(ostream &out, int cnt) const;
+	string get_name_withIndices() const;
+	const ArrayVariable* collective;	//point to father array
 	Block* parent;
 	ArrayMgr* arrMgr;
+	int indicesType; //0 means all const, 1 means iterate
 private:
 	ArrayVariable(Block* blk, const std::string &name, const Type *type, const Expression* init, const CVQualifiers* qfer, const vector<unsigned int>& sizes, const Variable* isFieldVarOf);
 

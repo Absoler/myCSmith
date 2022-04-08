@@ -366,7 +366,7 @@ int Variable::get_field_id(void) const
 	return -1;
 }
 
-vector<int> Variable::get_field_id_list(void) const{
+vector<int> Variable::get_field_id_list(void) const{	//res is the indices for accessing this var
 	vector<int> res;
 	if(field_var_of){
 		res=field_var_of->get_field_id_list();
@@ -767,7 +767,6 @@ std::string
 Variable::get_actual_name() const
 {
 	std::string s = name;
-
 	if (is_global())
 		return get_prefixed_name(s);
 	else
@@ -1429,7 +1428,7 @@ Variable::match_var_name(const string &vname) const
 	}
 	return NULL;
 }
-
+/* find pointers in my fields*/
 void Variable::find_pointer_fields(vector<const Variable *> &ptr_fields) const
 {
 	for (size_t i = 0; i < field_vars.size(); i++)

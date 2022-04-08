@@ -271,7 +271,7 @@ FunctionInvocationUser::build_invocation(Function *target, CGContext &cg_context
 		CGContext param_cg_context(cg_context, running_eff_context, &param_eff_accum);
 		Variable* v = func->param[i];
 		// to avoid too much function invocations as parameters
-		Expression *p = Expression::make_random_param(param_cg_context, v->type, &v->qfer);
+		Expression *p = Expression::make_random_param(param_cg_context, v->type, &v->qfer, &target->param_read_counter[v]);
 		ERROR_GUARD(false);
 		// typecast, if needed.
 		p->check_and_set_cast(v->type);

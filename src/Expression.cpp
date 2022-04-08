@@ -252,7 +252,7 @@ Expression::output_cast(std::ostream& out) const
  *
  */
 Expression *
-Expression::make_random_param(CGContext &cg_context, const Type* type, const CVQualifiers* qfer, enum eTermType tt)
+Expression::make_random_param(CGContext &cg_context, const Type* type, const CVQualifiers* qfer, map<int,int> *read_counter, enum eTermType tt)
 {
 	DEPTH_GUARD_BY_TYPE_RETURN_WITH_FLAG(dtExpressionRandomParam, tt, NULL);
 	Expression *e = 0;
@@ -283,7 +283,7 @@ Expression::make_random_param(CGContext &cg_context, const Type* type, const CVQ
 		e = Constant::make_random(type);
 		break;
 	case eVariable:
-		e = ExpressionVariable::make_random(cg_context, type, qfer, true);
+		e = ExpressionVariable::make_random(cg_context, type, qfer, true, false, read_counter);
 		break;
 	case eFunction:
 		e = ExpressionFuncall::make_random(cg_context, type, qfer);

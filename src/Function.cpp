@@ -66,7 +66,7 @@
 #include "DepthSpec.h"
 #include "ExtensionMgr.h"
 #include "OutputMgr.h"
-
+#include "ArrayVariable.h"
 using namespace std;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -76,7 +76,10 @@ static vector<FactMgr*>  FMList;        // list of fact managers for each functi
 static long cur_func_idx;				// Index into FuncList that we are currently working on
 static bool param_first=true;			// Flag to track output of commas
 static int builtin_functions_cnt;
-
+map<pair<const Function*, const Function*>, int> Function::callGraph;
+map<const Function*, int> Function::calledCounter;
+map<const Variable*, int> Function::totalCounter;
+Function* Function::first_func=NULL;
 void print_funcs(){
 	printf("%lu Functions totally\n",FuncList.size());
     for(size_t i=0;i<FuncList.size();i++){
@@ -249,7 +252,6 @@ RandomFunctionName(void)
 {
 	return gensym("func_");
 }
-
 /*-------------------------------------------------------------
  *  choose a random return type. only struct/unions and integer types
  *  (not incl. void)  are qualified, (no arrays)
@@ -292,6 +294,10 @@ Function::choose_func(vector<Function *> funcs,
 	vector<Function *>::iterator i;
 
 	for (i = funcs.begin(); i != funcs.end(); ++i) {
+		if((*i)->id<cg_context.get_current_func()->id){
+			//a function can only call functions with bigger id, in case of recursion 
+			continue;
+		}
 		// skip any function which has incompatible return type
 		// if type = 0, we don't care
 		if (type && !type->is_convertable((*i)->return_type))
@@ -408,6 +414,7 @@ Function::Function(const string &name, const Type *return_type)
 	  visited_cnt(0),
 	  build_state(UNBUILT)
 {
+	id=stoi(name.substr(5));
 	FuncList.push_back(this);			// Add to global list of functions.
 }
 
@@ -422,6 +429,7 @@ Function::Function(const string &name, const Type *return_type, bool builtin)
 	  visited_cnt(0),
 	  build_state(UNBUILT)
 {
+	id=stoi(name.substr(5));
 	FuncList.push_back(this);			// Add to global list of functions.
 }
 
@@ -494,6 +502,7 @@ Function::make_first(void)
 	f->body->add_back_return_facts(fm, fm->global_facts);
 	// collect info about global dangling pointers
 	fm->find_dangling_global_ptrs(f);
+	first_func=f;
 	return f;
 }
 
@@ -832,6 +841,7 @@ GenerateFunctions(void)
 	}
 	FactPointTo::aggregate_all_pointto_sets();
 	ExtensionMgr::GenerateValues();
+	Function::cal_Counter();
 }
 
 /*
@@ -893,12 +903,109 @@ Function::deleteFunction(Function* func)
 	return 0;
 }
 
+string 
+Function::get_setVarCnt(string name, int cnt){
+	return "setReadCnt(&"+name+", sizeof("+name+"), "+std::to_string(cnt)+");";
+}
+
+void 
+Function::generate_setReadCnt(ostream& out){
+	for(auto p:Function::totalCounter){
+		const Variable* var=p.first;
+		int cnt=p.second;
+		if(var->isArray){
+			const ArrayVariable* av=dynamic_cast<const ArrayVariable*>(var);
+			av->output_setReadCnt(out, cnt);
+		}else{
+			output_tab(out, 1);
+			out<<get_setVarCnt(var->name, cnt);
+			outputln(out);
+		}
+	}
+}
+
+void Function::cal_Counter(){
+	// callgraph must be a DAG
+	// build a simpler callgraph (without weight)
+	map<const Function*, vector<const Function*>> g;
+	for(auto p:callGraph){
+		g[p.first.first].push_back(p.first.second);
+	}
+
+	// calculate calledCounter
+	queue<pair<const Function*, int>> que;
+	que.push(make_pair(first_func, 1));
+	calledCounter[first_func]=1;
+	while(!que.empty()){
+		pair<const Function*, int> tmp=que.front();
+		que.pop();
+		const Function* curFunc=tmp.first;
+		int curNum=tmp.second;
+		for(const Function* succ:g[curFunc]){
+			int edge=callGraph[make_pair(curFunc, succ)];	//get weight
+			calledCounter[succ]+=edge*curNum;
+			que.push(make_pair(succ,edge*curNum));
+		}
+	}
+
+	// calculate forVarCounter
+	for(Function* func:FuncList){
+		for(auto p:func->global_counter){
+			// if(VariableSelector::isForVar(p.first)){
+				totalCounter[p.first] += p.second*calledCounter[func];
+			// }
+		}
+	}
+
+}
 /*
  * Release all dynamic memory
  */
 void
 Function::doFinalization(void)
 {
+	printf("information of read counter of each function\n");
+	for(Function* func:FuncList){
+		printf("%s:\n", func->name.c_str());
+		for(auto p:func->global_counter){
+			string name=p.first->name;
+			if(const ArrayVariable* av=dynamic_cast<const ArrayVariable*>(p.first)){
+				name=av->get_name_withIndices();
+			}
+			printf("%s: %d\n", name.c_str(), p.second);
+		}
+	}
+	
+	printf("\ninformation of param read\n");
+	for(Function* func:FuncList){
+		printf("%s:\n", func->name.c_str());
+		for(auto p:func->param_read_counter){
+			printf("%s\n", p.first->name.c_str());
+			for(auto pp:p.second){
+				printf("level: %d	cnt: %d\n", pp.first, pp.second);
+			}
+			printf("\n");
+		}
+	}
+	printf("\ninformation of callGraph\n");
+	for(auto p=callGraph.begin();p!=callGraph.end();p++){
+		printf("%s --> %s : %d\n",
+		p->first.first->name.c_str(),
+		p->first.second->name.c_str(),
+		p->second);
+	}
+	printf("\ninformation of calledCounter\n");
+	for(auto p: calledCounter){
+		printf("%s %d\n",p.first->name.c_str(), p.second);
+	}
+	printf("\ninformation of total reads\n");
+	for(auto p:totalCounter){
+		string name=p.first->name;
+		if(const ArrayVariable* av=dynamic_cast<const ArrayVariable*>(p.first)){
+			name=av->get_name_withIndices();
+		}
+		printf("%s %d\n", name.c_str(), p.second);
+	}
 	for_each(FuncList.begin(), FuncList.end(), std::ptr_fun(deleteFunction));
 
 	FuncList.clear();

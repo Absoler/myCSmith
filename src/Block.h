@@ -62,7 +62,7 @@ class Block : public Statement
 {
 public:
 	// Factory method.
-	static Block *make_random(CGContext &cg_context, bool looping = false);
+	static Block *make_random(CGContext &cg_context, bool looping = false, int init=0, int test=0, int incr=0, eBinaryOps op=eCmpEq);
 
 	static Block *make_dummy_block(CGContext &cg_context);
 
@@ -112,6 +112,8 @@ public:
 
 	size_t remove_stmt(const Statement* s);
 
+	int get_loop_num(int n=-1) const;
+	bool is_loop() const;
 	bool looping;
 
 	bool in_array_loop;
@@ -119,6 +121,12 @@ public:
 	bool need_revisit;
 
 	std::vector<const Statement*> break_stms;
+
+	//only make sense when looping is true 
+	int init;	
+	int test;
+	int incr;
+	int loopNum;
 
 private:
 

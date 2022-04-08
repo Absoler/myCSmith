@@ -51,10 +51,13 @@ build/
 
 # outputfile
 *output*.c
+runtime/output2
+temp.*
 
 # extra files from pintool
 checkRead.out
 result.out
+timeout.out
 checkRead/*test*
 
 # created by notepad++
@@ -65,3 +68,12 @@ checkRead/*test*
 
 # run log
 problem/
+
+# test dir
+test/
+
+# scripts
+
+
+# prob file
+prob.txt

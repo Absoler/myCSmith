@@ -156,7 +156,7 @@ private:
 
 
 public: // XXX
-	int blk_depth;
+	int blk_depth;	// current depth when generating
 	int expr_depth;
 	unsigned int flags;
 	std::vector<const Block*> call_chain;
@@ -167,6 +167,8 @@ public: // XXX
 
 	const Expression* curr_rhs;   // only loaded in the context of LHS
 
+	map<const Variable*, int> stm_read_Counter;	// record current statement's read counter
+	map<pair<const Function*,const Function*>, int> stm_call_Counter;	// record current statement's calls
 private:
 	const Effect &effect_context;
 	Effect *effect_accum; // may be null!

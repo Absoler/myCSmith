@@ -137,6 +137,13 @@ OutputMgr::Output_setInfoFunc(std::ostream &out){
     out<<"}"<<endl;
 }
 
+void 
+OutputMgr::Output_setReadCntFunc(std::ostream &out){
+	out<<"void setReadCnt(unsigned long addr, unsigned int length, int cnt){"<<endl;
+    out<<"side=(side+(addr+length+cnt)%1000)%1000;"<<endl;
+	out<<"}"<<endl;
+}
+
 void
 OutputMgr::OutputMain(std::ostream &out)
 {
@@ -154,18 +161,23 @@ OutputMgr::OutputMain(std::ostream &out)
 	// output initializers for global array variables
 	OutputArrayInitializers(*VariableSelector::GetGlobalVariables(), out, 1);
 
+	// output set signal
+	out << "signal(SIGTERM, handleSignal);"<<endl;
+
 	// in case of target functions are inlined
 	vector<string> useFuncs=generate_useFuncs();
 	for(string useStmt:useFuncs){
 		out<<useStmt<<endl;
 	}
-	vector<string> globalInfos=VariableSelector::generate_globalInfos();
-	for(string info:globalInfos){
-		out<<info<<endl;
-	}
-	out<<"	getInfo(varInfos, global_cnt);"<<endl;	//transfer the address of varInfos to pintool
+	// send var info (name, length) to pintool
+	VariableSelector::generate_setGlobalInfos(out);
+	output_tab(out, 1);
+	out<<"getInfo(varInfos, global_cnt);"<<endl;	//transfer the address of varInfos to pintool
+	// send globals' read counter to pintool
+	Function::generate_setReadCnt(out);
 	out<<"	printf(\"%d\\n\",side);"<<endl;	//create side effect
 
+	
 	if (CGOptions::blind_check_global()) {
 		ExtensionMgr::OutputFirstFunInvocation(out, invoke);
 		std::vector<Variable *>& vars = *VariableSelector::GetGlobalVariables();
@@ -377,6 +389,22 @@ OutputMgr::OutputHeader(int argc, char *argv[], unsigned long seed)
 		OutputMgr::OutputHashFuncDecl(out);
 		OutputMgr::OutputStepHashFuncDecl(out);
 	}
+
+
+	//output signal handler
+	//now for record of infinite loop
+	out << "#include<stdlib.h>\n";
+	out << "#include<signal.h>\n";
+	out << "#include<stdio.h>\n";
+	out << "void handleSignal(int val){"<<endl;
+	out << "	if(val==SIGTERM){"<<endl;
+	out << "        printf(\"timeout\\n\");"<<endl;
+	out << "        FILE* resfile=fopen(\"timeout.out\",\"a\");"<<endl;
+	out << "        fprintf(resfile, \"timeout in "+std::to_string(seed)+"\\n\" );"<<endl;
+	out << "        fclose(resfile);"<<endl;
+	out << "        exit(0);" <<endl;
+	out << "	}"<<endl;
+	out << "}"<<endl;
 }
 
 void

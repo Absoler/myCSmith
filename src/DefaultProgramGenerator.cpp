@@ -97,7 +97,7 @@ DefaultProgramGenerator::goGenerator()
 	GenerateAllTypes();
 	
 	GenerateFunctions();
-	print_funcs();
+	
 	output_mgr_->Output();
 	if (CGOptions::identify_wrappers()) {
 		ofstream ofile;

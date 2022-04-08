@@ -248,9 +248,9 @@ void
 StatementArrayOp::Output(std::ostream &out, FactMgr* fm, int indent) const
 {
 	size_t i;
-	out<<"$";
-	if(type_init) 
-		out<<"$";
+	// out<<"$";
+	// if(type_init) 
+	// 	out<<"$";
 	output_header(out, indent);
 
 	if (body) {
@@ -292,8 +292,6 @@ StatementArrayOp::Output(std::ostream &out, FactMgr* fm, int indent) const
 		out << "}";
 		outputln(out);
 	}
-	out<<"$";
-	if(type_init) out<<"$";
 }
 
 bool

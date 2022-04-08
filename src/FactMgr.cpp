@@ -66,7 +66,7 @@
 
 using namespace std;
 
-std::vector<Fact*> FactMgr::meta_facts;
+std::vector<Fact*> FactMgr::meta_facts;		// may store two empty pointer and union fact, may be for invoking different methods?
 
 void
 FactMgr::add_new_var_fact_and_update_inout_maps(const Block* blk, const Variable* var)
@@ -381,7 +381,10 @@ void FactMgr::remove_rv_facts(FactVec& facts)
 		}
 	}
 }
-
+/*
+as the name suggests
+for lhs = rhs, update lhs's facts
+*/
 bool
 FactMgr::update_fact_for_assign(const Lhs* lhs, const Expression* rhs, FactVec& inputs)
 {
@@ -779,6 +782,10 @@ void
 FactMgr::doFinalization()
 {
 	Fact::doFinalization();
+	for(Fact* fact:meta_facts){
+		FactPointTo* fp=(FactPointTo*)fact;
+		printf("1");
+	}
 	meta_facts.clear();
 }
 

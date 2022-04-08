@@ -352,11 +352,27 @@ int
 main(int argc, char **argv)
 {
 	g_Seed = platform_gen_seed();
-	// g_Seed=90264886;
+	// g_Seed=90264886;`````
 	// g_Seed=3332292053;
-	// g_Seed=2120573435;
-	CGOptions::set_default_settings();
+	// g_Seed=2177318432;
+	// g_Seed=2546092965;	//bitfield
+	// g_Seed=2555218732;	// repeat access g_209[0][0]
+	// g_Seed=2581106399;	// unroll loop g_215, g_10
+	// g_Seed=2876584562;	//struct-field repeat
+	// g_Seed=1374132354;	//lose indices infomation when entering facts
+	// g_Seed=2410436431;		//global as arg
+	// g_Seed=3336553530;
+	// g_Seed=1952513204;	//program don't stop
+	// g_Seed=3852766990;	//sometimes global_in_param work
+	// g_Seed=3551466886; 	//another loop unroll
+	// g_Seed = 2803544464;
+	g_Seed=4271759418;	// un-catch read g_1343.f3.f7 and g_1343.f3.f1
 
+	CGOptions::set_default_settings();
+	CGOptions::bitfields(false);
+	CGOptions::volatiles(false);
+	CGOptions::avoid_signed_overflow(false);
+	printf("\n\ncurrent seed: %lu\n", g_Seed);
 	for (int i=1; i<argc; i++) {
 
 		if (strcmp (argv[i], "--help") == 0 ||
