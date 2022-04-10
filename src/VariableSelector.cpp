@@ -495,28 +495,32 @@ void VariableSelector::set_used(const Variable *var, CGContext& context) {
                         constInd=false;
                     }
                 }
-                if(indices.size()!=(av->get_sizes()).size()){
-                    if(fa!=var&&fa==av){
-                        printf("\nfa!=var&&fa==av\n");
-                    }
-                    if((void*)var==(void*)fa){
-                        printf("(void*)var==(void*)fa\n");
-                    }
-                    if(fa!=av){
-                        printf("%d\n",indicesExp.size());
-                        assert((av->get_indices()).size()>0);
-                    }
-                    get=true;
-                    printf("\nassert %s %d\n",av->get_name_withIndices().c_str(), haveIndices);
-                    printf("%d\n",indices.size());
-                    for(int v:indices){
-                        printf(" %d\n",v);
-                    }
-                    printf("%d\n",(av->get_sizes()).size());
-                    for(int v:av->get_sizes()){
-                        printf(" %d\n",v);
-                    }
-                }
+                // if(!(constInd&&av->indicesType==0 || !constInd && av->indicesType==1)){
+                //     printf("constInd %d indicesType %d\n",constInd,av->indicesType);
+                // }
+                assert(constInd&&av->indicesType==0 || !constInd && av->indicesType==1);
+                // if(indices.size()!=(av->get_sizes()).size()){
+                //     if(fa!=var&&fa==av){
+                //         printf("\nfa!=var&&fa==av\n");
+                //     }
+                //     if((void*)var==(void*)fa){
+                //         printf("(void*)var==(void*)fa\n");
+                //     }
+                //     if(fa!=av){
+                //         printf("%d\n",indicesExp.size());
+                //         assert((av->get_indices()).size()>0);
+                //     }
+                //     get=true;
+                //     printf("\nassert %s %d\n",av->get_name_withIndices().c_str(), haveIndices);
+                //     printf("%d\n",indices.size());
+                //     for(int v:indices){
+                //         printf(" %d\n",v);
+                //     }
+                //     printf("%d\n",(av->get_sizes()).size());
+                //     for(int v:av->get_sizes()){
+                //         printf(" %d\n",v);
+                //     }
+                // }
                 assert(indices.size()==(av->get_sizes()).size());
                 //set arrMgr
                 ArrayMgr *mgr=fa->arrMgr;
@@ -559,8 +563,8 @@ void VariableSelector::set_used(const Variable *var, CGContext& context) {
                     }
                 }
             }
-
-            assert(constInd&&av->indicesType==0 || !constInd && av->indicesType==1);
+            // this assert is wrong, av may be a father and never experience itemize
+            // assert(constInd&&av->indicesType==0 || !constInd && av->indicesType==1);
             if(av==fa){
                 // may because facts only contain father array
                 // tricky situation, set all-loaded for now
