@@ -208,6 +208,9 @@ Block::make_random(CGContext &cg_context, bool looping, int init, int test, int 
 	fm->set_fact_in(b, fm->global_facts);
 	Effect pre_effect = cg_context.get_accum_effect();
 	unsigned int max = BlockProbability(*b);
+	if(looping&&max>2){	//reduce length of for-body
+		max=max/2;
+	}
 	if (Error::get_error() != SUCCESS) {
 		curr_func->stack.pop_back();
 		delete b;
@@ -223,10 +226,10 @@ Block::make_random(CGContext &cg_context, bool looping, int init, int test, int 
 			break;
 		b->stms.push_back(s);
 		// move temp counter from cg_context to s
-		s->read_counter=cg_context.stm_read_Counter;
-		cg_context.stm_read_Counter.clear();
-		s->call_counter=cg_context.stm_call_Counter;
-		cg_context.stm_call_Counter.clear();
+		s->read_counter=cg_context.get_current_func()->stm_read_Counter;
+		cg_context.get_current_func()->stm_read_Counter.clear();
+		s->call_counter=cg_context.get_current_func()->stm_call_Counter;
+		cg_context.get_current_func()->stm_call_Counter.clear();
 		if (s->must_return()) {
 			break;
 		}
@@ -849,6 +852,9 @@ Block::post_creation_analysis(CGContext& cg_context, const Effect& pre_effect)
 				for(auto p:stms[i]->read_counter){
 					const Variable* var=p.first;
 					int cnt=p.second;
+					if(var->name=="g_635.f7"){
+						printf("g_635.f7 remove %d\n", cnt);
+					}
 					func->global_counter[var]-=cnt;
 				}
 				// undo call counter in stms[i]

@@ -279,7 +279,7 @@ ArrayVariable::get_name_withIndices() const{
 		if(const Constant* ind=dynamic_cast<const Constant*>(indices[i])){
 			res+=ind->get_value();
 		}else{
-			res+='-1';
+			res+="-1";
 		}
 		res+=']';
 	}

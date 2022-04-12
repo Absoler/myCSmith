@@ -136,6 +136,9 @@ public:
 	static map<const Function*, int> calledCounter;		// record number of times funcs are called
 	static void cal_Counter();
 
+	map<const Variable*, int> stm_read_Counter;	// record current statement's read counter
+	map<pair<const Function*,const Function*>, int> stm_call_Counter;	// record current statement's calls
+
 	static Function* first_func;
 
 	static string get_setVarCnt(string name, int cnt);

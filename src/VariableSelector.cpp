@@ -384,30 +384,9 @@ VariableSelector::choose_visible_read_var(const Block *b, vector<const Variable 
     return choose_ok_var(ok_vars);
 }
 
-/*
-    for a param, we record 
-*/
-void VariableSelector::record_paramUse(const Variable* var, const CGContext& context, int endLevel){
-    if(!var->is_argument()){   
-        return ;
-    }
-    if(var->is_field_var()){
-        // read of p.field will be treated as p is read
-        var=var->get_top_container();
-    }
-    if(var->name=="p_55"){
-        printf("1");
-    }
-    assert(!var->isArray);
-    const Block* blk=context.get_current_block();
-    Function* func=context.get_current_func();
-    int num=(blk->is_loop()?blk->get_loop_num():1);
-    for(int i=1;i<=endLevel;i++){
-        func->param_read_counter[var][i]+=num;
-    }
-}
+
 //zkb
-void VariableSelector::set_used(const Variable *var, CGContext& context) {
+void VariableSelector::set_used(const Variable *var, CGContext& context, bool isReturn) {
     //find the used target in GlobalList by name, and set its loaded = true
     bool get=false;
     if(var->name=="g_1343.f3.f1"){
@@ -446,7 +425,7 @@ void VariableSelector::set_used(const Variable *var, CGContext& context) {
                     // set global counter
                     
                     // record this very var so as to compare in pintool conveniently
-                    record_globalUse(var, context);
+                    record_globalUse(var, context, false, isReturn);
                 }
             }    
         }
@@ -579,15 +558,17 @@ void VariableSelector::set_used(const Variable *var, CGContext& context) {
 
             constInd &= haveIndices;    // must do this
             if(constInd){
-                record_globalUse(var, context);
+                record_globalUse(var, context, false, isReturn);
             }else if(haveIndices){
                 record_globalUse(var, context, true);
+                assert(!isReturn);
             }else{
                 if(get){
                     printf("%s set fa\n", var->name.c_str());
                 }
                 // when var!=fa and it didn't have indices either, it may come from facts derefed, not clear yet
                 record_globalUse(fa, context);
+                assert(!isReturn);
             }
         }
     }else{
@@ -605,7 +586,10 @@ void VariableSelector::set_used(const Variable *var, CGContext& context) {
     }
 }
 
-void VariableSelector::record_globalUse(const Variable* var, CGContext &context, bool isArrayOp){
+void VariableSelector::record_globalUse(const Variable* var, CGContext &context, bool isArrayOp, bool isReturn){
+    if(var->name=="g_635.f7"||var->name=="g_488.f0.f2.f1"){
+        printf("1");
+    }
     if(context.get_current_block()->is_loop()){
         forVars.insert(var);
         int loopNum=context.get_current_block()->get_loop_num();
@@ -615,11 +599,39 @@ void VariableSelector::record_globalUse(const Variable* var, CGContext &context,
             int array_loopNum=context.get_current_block()->get_loop_num(dimension);
             loopNum /= array_loopNum;
         }
+        if(isReturn){
+            loopNum=1;
+        }
         context.get_current_func()->global_counter[var]+=loopNum;
-        context.stm_read_Counter[var]+=loopNum;
+        context.get_current_func()->stm_read_Counter[var]+=loopNum;
     }else{
         context.get_current_func()->global_counter[var]+=1;
-        context.stm_read_Counter[var]+=1;
+        context.get_current_func()->stm_read_Counter[var]+=1;
+    }
+}
+
+/*
+    for a param, we record 
+*/
+void VariableSelector::record_paramUse(const Variable* var, const CGContext& context, int endLevel, bool isReturn){
+    if(!var->is_argument()){   
+        return ;
+    }
+    if(var->is_field_var()){
+        // read of p.field will be treated as p is read
+        var=var->get_top_container();
+    }
+    if(var->name=="p_55"){
+        printf("1");
+    }
+    assert(!var->isArray);
+    const Block* blk=context.get_current_block();
+    Function* func=context.get_current_func();
+    int num=(blk->is_loop()?blk->get_loop_num():1);
+    if(isReturn)
+        num=1;
+    for(int i=1;i<=endLevel;i++){
+        func->param_read_counter[var][i]+=num;
     }
 }
 

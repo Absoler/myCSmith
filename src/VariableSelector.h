@@ -61,10 +61,10 @@ class VariableSelector
 {
 	friend class ArrayVariable;
 public:
-    static void set_used(const Variable* var, CGContext& context); //zkb
-	static void record_paramUse(const Variable* var, const CGContext& context,  int);
+    static void set_used(const Variable* var, CGContext& context, bool isReturn=false); //zkb
+	static void record_paramUse(const Variable* var, const CGContext& context,  int endLevel, bool isReturn=false);
+	static void record_globalUse(const Variable* var, CGContext& context, bool isArrayOp=false, bool isReturn=false);
 	static bool isForVar(const Variable* var);
-	static void record_globalUse(const Variable* var, CGContext& context, bool isArrayOp=false);
 
 	static bool is_container_used(const Variable* &field, const vector<Variable*> &vars);
 	static bool is_field_used(const Variable* &container, const vector<Variable*> &vars);

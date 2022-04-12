@@ -147,12 +147,12 @@ ExpressionVariable::make_random(CGContext &cg_context, const Type* type, const C
 				for(int i=0; i<=indirect; i++){
 					for(const Variable* var:targets[i]){
 						if(var->is_argument()){
-							VariableSelector::record_paramUse(var, cg_context, indirect-i);
+							VariableSelector::record_paramUse(var, cg_context, indirect-i, as_return);
 						}
 						if(get&&var->name=="g_1343.f3.f1"){
 							printf("will set_used\n");
 						}
-						VariableSelector::set_used(var, cg_context);
+						VariableSelector::set_used(var, cg_context, as_return);
 					}
 				}
 				// var is selected as arg and these globals will be deref-ed and read in function
@@ -160,7 +160,7 @@ ExpressionVariable::make_random(CGContext &cg_context, const Type* type, const C
 					printf("in %s\n",var->name.c_str());
 				for(const Variable* v:globals_in_param){
 					printf("will read %s\n", v->name.c_str());
-					VariableSelector::set_used(v, cg_context);
+					VariableSelector::set_used(v, cg_context);	//如果以后允许参数执行次数大于一次，这里set_used记录次数时要记录那个次数
 				}
                 // VariableSelector::set_used(var);    //zkb
 				//set state for dereference

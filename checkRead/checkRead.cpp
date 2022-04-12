@@ -6,11 +6,17 @@
 #include<map>
 #include<cstring>
 #include<vector>
+#include<utility>
+#include<utility>
+#include<assert.h>
 using std::string;
 using std::map;
 using std::upper_bound;
 using std::sort;
 using std::vector;
+using std::set;
+using std::pair;
+#define VERSION_2
 
 #define MAX_GLOBAL_VAR_NUM 1000
 
@@ -25,9 +31,38 @@ struct Var{	//record a var
     char name[10];
 }globals[MAX_GLOBAL_VAR_NUM];
 bool comp_Var(const Var& var1, const Var& var2){
-	return var1.addr<var2.addr;
+	    return var1.addr<var2.addr;
+}
+int cnt_globals=0;
+
+//-------util----------------
+void print_reads(FILE* file);
+void print_globals(FILE* file);
+
+//---------get global info------------
+VOID record_var(ADDRINT _addr, ADDRINT cnt){
+    // printf("pin info-addr: %lu    cnt: %ld\n",_addr,cnt);
+    printf("num of global vars  %ld\n",cnt);
+    if(cnt>MAX_GLOBAL_VAR_NUM){
+        printf("too many global variables!\n");
+        exit(1);
+    }
+    PIN_SafeCopy(globals,Addrint2VoidStar(_addr),sizeof(Var)*cnt);
+    cnt_globals=cnt;
+    sort(globals, globals+cnt, comp_Var);
 }
 
+VOID hack_getInfo(RTN rtn, VOID* v){
+	RTN_Open(rtn);
+	if(RTN_Name(rtn)=="getInfo"){
+		RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR)record_var,
+			IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+			IARG_FUNCARG_ENTRYPOINT_VALUE, 1, IARG_END);
+	}
+	RTN_Close(rtn);
+}
+
+#ifdef VERSION_1
 struct Read{	//record a read operation
 	ADDRINT start, ins_ptr; 
     UINT32 length;
@@ -46,32 +81,17 @@ bool comp_Read(const Read& read1, const Read& read2){
     	return read1.start<read2.start;
     }
 }
-int cnt_globals=0, cnt_reads=0;
-map<ADDRINT, string> disasMap;
+int cnt_reads=0;
 
-map<ADDRINT, int> forVars;   // contain all global vars read in a for-loop, and their read times
-
-//---------get global info------------
-VOID record_var(ADDRINT _addr, ADDRINT cnt){
-    // printf("pin info-addr: %lu    cnt: %ld\n",_addr,cnt);
-    printf("num of global vars  %ld\n",cnt);
-    if(cnt>MAX_GLOBAL_VAR_NUM){
-        printf("too many global variables!\n");
-        exit(1);
+void print_reads(FILE* file){
+    fprintf(file, "all read memory\n");
+    for(int i=0;i<cnt_reads;i++){
+        fprintf(file, "0x%lx %d %s\n", reads[i].start, reads[i].length, (reads[i].isGlobal?"global":"local"));
     }
-    PIN_SafeCopy(globals,Addrint2VoidStar(_addr),sizeof(Var)*cnt);
-    cnt_globals=cnt;
+    fprintf(file,"\n");
 }
 
-VOID hack_getInfo(RTN rtn, VOID* v){
-	RTN_Open(rtn);
-	if(RTN_Name(rtn)=="getInfo"){
-		RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR)record_var,
-			IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
-			IARG_FUNCARG_ENTRYPOINT_VALUE, 1, IARG_END);
-	}
-	RTN_Close(rtn);
-}
+map<ADDRINT, string> disasMap;
 
 //----------record read info-----------
 VOID record_Read(ADDRINT ip, ADDRINT _start, UINT32 _length) { 
@@ -107,26 +127,6 @@ VOID hack_targetFunc(RTN rtn, VOID* v){
     }
     RTN_Close(rtn);
 }
-
-//----------get forVars--------------
-VOID record_ForVar(ADDRINT addr, int cnt){
-    forVars[addr]=cnt;
-}
-VOID hack_setForVar(RTN rtn, VOID* v){
-    RTN_Open(rtn);
-    if(RTN_Name(rtn)=="setForVar"){
-        RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR)record_ForVar,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
-            IARG_FUNCARG_ENTRYPOINT_VALUE, 2, IARG_END);
-    }
-    RTN_Close(rtn);
-}
-
-
-//-------util----------------
-void print_reads(FILE* file);
-void print_globals(FILE* file);
 
 //----------analysis--------
 VOID Fini(INT32 code, VOID* val){
@@ -190,11 +190,173 @@ VOID Fini(INT32 code, VOID* val){
     print_reads(stdout);
 }
 
+#endif
+
+#ifdef VERSION_2
+typedef pair<ADDRINT, uint32_t> Read;
+
+// a read is represented as <addr, len>
+// PROBLEM: under this strict definition, if compiler split a read in half or combine two reads, then we cant't identifiy it 
+map<Read, int> expect_counter;    // contain all global vars read, and their expected read times (up-limit for now)
+map<Read, int> actual_counter;    // record actual read times of each reads 
+set<Read> unexpectedReads;      
+set<Read> actual_clusters[MAX_GLOBAL_VAR_NUM];
+set<Read> expect_clusters[MAX_GLOBAL_VAR_NUM];
+map<Read, set<ADDRINT>> instOfRead;    // record all insts addrs a read occur
+map<Read, int> varOfRead;              // record which var the read belongs to (record index)
+map<Read, bool> isForVars;    // record whether a read is forVar, maybe not necessary now, 'cause we combine two situation
+map<Read, bool> isGlobals;    // record whether a read located in global, not necessary too.
+
+map<ADDRINT, string> disasMap;  // store instruction text
+
+inline int getInd(const Read& read){
+    return upper_bound(globals, globals+cnt_globals, (Var){read.first, read.second}, comp_Var)-globals-1;
+}
+
+inline bool partOf(const Read& read, const Var& var){
+    return read.first<var.addr+var.size && read.first+read.second<=var.addr+var.size;
+}
+inline bool partOf(const Read& read1, const Read& read2){
+    return read1.first<read2.first+read2.second && read1.first+read1.second<=read2.first+read2.second;
+}
+
+bool isGlobal(const Read &read){
+    // ADDRINT start=read.first;
+    // unsigned len=read.second;
+    
+    int id=getInd(read);
+    bool res=false;
+    if(id>=0 && id<cnt_globals){
+        res = partOf(read, globals[id]);
+    }
+
+    return res;
+}
+
+set<Read> findContainers(const Read& target, const set<Read>& readset){
+    set<Read> res;
+    for(auto read:readset){
+        if(partOf(target, read)){
+            res.insert(read);
+        }
+    }
+    return res;
+}
+
+
+//----------get vars' limit--------------
+VOID record_ReadCnt(ADDRINT addr, int len, int cnt){
+    Read read=std::make_pair<ADDRINT, int>(addr, len);
+    expect_counter[read]=cnt;
+}
+VOID hack_setReadCnt(RTN rtn, VOID* v){
+    RTN_Open(rtn);
+    if(RTN_Name(rtn)=="setReadCnt"){
+        RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR)record_ReadCnt,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 2, IARG_END);
+    }
+    RTN_Close(rtn);
+}
+
+//----------record read info-----------
+VOID record_Read(ADDRINT ip, ADDRINT start, UINT32 len) { 
+    Read read=std::make_pair(start, len);
+    if(isGlobal(read)){
+        
+        actual_counter[read]++;
+        if(instOfRead[read].find(ip)==instOfRead[read].end()){
+            // we don't know this inst load this content before
+            instOfRead[read].insert(ip);
+        }
+    }
+}
+
+VOID hack_targetFunc(RTN rtn, VOID* v){
+    RTN_Open(rtn);
+    if(RTN_Name(rtn).substr(0,targetFuncPrefix.length())==targetFuncPrefix){
+        for (INS ins = RTN_InsHead(rtn); INS_Valid(ins); ins = INS_Next(ins)){
+            if (INS_IsMemoryRead(ins)){
+                disasMap[INS_Address(ins)] = INS_Disassemble(ins);
+                INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)record_Read, IARG_INST_PTR, IARG_MEMORYREAD_EA, IARG_MEMORYREAD_SIZE, IARG_END);
+            }
+        }    
+    }
+    RTN_Close(rtn);
+}
+
+//----------analysis--------
+VOID Fini(INT32 code, VOID* val){
+    
+    print_globals(outfile);
+
+    // build relations between global vars and global reads
+    for(auto p:actual_counter){
+        Read read=p.first;
+        int id=getInd(read);
+        assert(partOf(read, globals[id]));
+        varOfRead[read]=id;
+        actual_clusters[id].insert(read);
+    }
+    for(auto p:expect_counter){
+        Read read=p.first;
+        int id=getInd(read);
+        assert(partOf(read, globals[id]));
+        varOfRead[read]=id;
+        expect_clusters[id].insert(read);
+    }
+
+    fprintf(outfile,"\n\nproblem of too many reads:\n");
+    for(int id=0;id<cnt_globals;id++){
+        if(actual_clusters[id].size()>0){
+            for(Read read:actual_clusters[id]){
+                set<Read> actual_set=findContainers(read, actual_clusters[id]);
+                set<Read> expect_set=findContainers(read, expect_clusters[id]);
+                if(expect_set.empty()){
+                    unexpectedReads.insert(read);
+                    continue;
+                }
+                int actual_cnt=0, expect_cnt=0;
+                for(Read read:actual_set){
+                    actual_cnt+=actual_counter[read]; 
+                }
+                for(Read read:expect_set){
+                    expect_cnt+=expect_counter[read];
+                }
+                if(actual_cnt>expect_cnt){
+                    fprintf(outfile, "%s: start at 0x%lx of len = %d\n", globals[varOfRead[read]].name, read.first, read.second);
+                    fprintf(outfile, "expected %d but read %d\n", expect_cnt, actual_cnt);
+                    for(ADDRINT ip: instOfRead[read]){
+                        fprintf(outfile, "  %s\n", disasMap[ip].c_str());
+                    }
+                    fprintf(outfile, "\n");
+                    fail=true;
+                }
+            }
+        }
+    }
+    
+    
+    fprintf(outfile, "problem of unexpected reads\n");
+    for(Read read: unexpectedReads){
+        fprintf(outfile, "%s: start at 0x%lx of len = %d\n", globals[varOfRead[read]].name, read.first, read.second);
+        for(ADDRINT addr:instOfRead[read]){
+            fprintf(outfile, "  %s\n", disasMap[addr].c_str());
+        }
+        fprintf(outfile, "\n");
+        fail=true;
+    }
+    
+    fprintf(resfile,(fail?"1":"0"));
+}
+
+#endif
+
 INT32 Usage(){
 
     return -1;
 }
-
 
 
 int main(int argc, char* argv[]){
@@ -206,7 +368,7 @@ int main(int argc, char* argv[]){
 
     RTN_AddInstrumentFunction(hack_getInfo, 0);
     RTN_AddInstrumentFunction(hack_targetFunc, 0);
-
+    RTN_AddInstrumentFunction(hack_setReadCnt, 0);
     
     PIN_AddFiniFunction(Fini, 0);
 
@@ -215,13 +377,7 @@ int main(int argc, char* argv[]){
 }
 
 //-------util-----------------
-void print_reads(FILE* file){
-    fprintf(file, "all read memory\n");
-    for(int i=0;i<cnt_reads;i++){
-        fprintf(file, "0x%lx %d %s\n", reads[i].start, reads[i].length, (reads[i].isGlobal?"global":"local"));
-    }
-    fprintf(file,"\n");
-}
+
 void print_globals(FILE* file){
     fprintf(file, "all global variables\n");
     for(int i=0;i<cnt_globals;i++){

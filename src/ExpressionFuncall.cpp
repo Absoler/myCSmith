@@ -102,7 +102,7 @@ ExpressionFuncall::make_random(CGContext &cg_context, const Type* type, const CV
 			const Function* caller=cg_context.get_current_func();
 			const Function* callee=invoke->get_func();
 			Function::callGraph[make_pair(caller, callee)]+=num;
-			cg_context.stm_call_Counter[make_pair(caller, callee)]+=num;
+			cg_context.get_current_func()->stm_call_Counter[make_pair(caller, callee)]+=num;
 		}
 	}
 	return e;
