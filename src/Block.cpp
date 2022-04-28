@@ -372,6 +372,7 @@ Block::Output(std::ostream &out, FactMgr* fm, int indent) const
 	if (CGOptions::math_notmp())
 		OutputTmpVariableList(out, indent);
 
+	set<const Variable*> liveVars=func->getLiveVars();
 	OutputVariableList(local_vars, out, indent);
 	OutputStatementList(stms, out, fm, indent);
 
@@ -852,7 +853,7 @@ Block::post_creation_analysis(CGContext& cg_context, const Effect& pre_effect)
 				for(auto p:stms[i]->read_counter){
 					const Variable* var=p.first;
 					int cnt=p.second;
-					if(var->name=="g_635.f7"){
+					if(var->name=="g_846"){
 						printf("g_635.f7 remove %d\n", cnt);
 					}
 					func->global_counter[var]-=cnt;

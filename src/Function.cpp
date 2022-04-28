@@ -958,6 +958,16 @@ void Function::cal_Counter(){
 	}
 
 }
+
+set<const Variable*> 
+Function::getLiveVars(){
+	set<const Variable*> res;
+	std::copy(feffect.get_read_vars().begin(),feffect.get_read_vars().end(),std::inserter(res,res.end()));
+	std::copy(feffect.get_write_vars().begin(),feffect.get_write_vars().end(),std::inserter(res,res.end()));
+	std::copy(feffect.get_lhs_write_vars().begin(),feffect.get_lhs_write_vars().end(),std::inserter(res,res.end()));	
+	return res;
+}
+
 /*
  * Release all dynamic memory
  */

@@ -1,4 +1,4 @@
-#include "pin.h"
+#include "pin.H"
 #include<string>
 #include<cstdio>
 #include<algorithm>
@@ -214,10 +214,10 @@ inline int getInd(const Read& read){
 }
 
 inline bool partOf(const Read& read, const Var& var){
-    return read.first<var.addr+var.size && read.first+read.second<=var.addr+var.size;
+    return read.first>=var.addr && read.first+read.second<=var.addr+var.size;
 }
 inline bool partOf(const Read& read1, const Read& read2){
-    return read1.first<read2.first+read2.second && read1.first+read1.second<=read2.first+read2.second;
+    return (read1.first>=read2.first && read1.first+read1.second<=read2.first+read2.second);
 }
 
 bool isGlobal(const Read &read){
@@ -247,7 +247,7 @@ set<Read> findContainers(const Read& target, const set<Read>& readset){
 //----------get vars' limit--------------
 VOID record_ReadCnt(ADDRINT addr, int len, int cnt){
     Read read=std::make_pair<ADDRINT, int>(addr, len);
-    expect_counter[read]=cnt;
+    expect_counter[read]+=cnt;
 }
 VOID hack_setReadCnt(RTN rtn, VOID* v){
     RTN_Open(rtn);
@@ -264,7 +264,9 @@ VOID hack_setReadCnt(RTN rtn, VOID* v){
 VOID record_Read(ADDRINT ip, ADDRINT start, UINT32 len) { 
     Read read=std::make_pair(start, len);
     if(isGlobal(read)){
-        
+        if(start==0x406c80){
+            printf("%s\n",disasMap[ip].c_str());
+        }
         actual_counter[read]++;
         if(instOfRead[read].find(ip)==instOfRead[read].end()){
             // we don't know this inst load this content before
@@ -328,7 +330,7 @@ VOID Fini(INT32 code, VOID* val){
                     fprintf(outfile, "%s: start at 0x%lx of len = %d\n", globals[varOfRead[read]].name, read.first, read.second);
                     fprintf(outfile, "expected %d but read %d\n", expect_cnt, actual_cnt);
                     for(ADDRINT ip: instOfRead[read]){
-                        fprintf(outfile, "  %s\n", disasMap[ip].c_str());
+                        fprintf(outfile, "%lx  %s\n", ip, disasMap[ip].c_str());
                     }
                     fprintf(outfile, "\n");
                     fail=true;

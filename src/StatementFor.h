@@ -82,6 +82,7 @@ public:
 	static int get_test_value(const Expression* test);		//get the terminal value of ctrl-var
 	static int get_incr_value(const StatementAssign* init);	//get the step
 	static eBinaryOps get_test_op(const Expression* test);	//get test_op
+	const Variable* ctrlVar;
 private:
 	// XXX --- `init' and `incr' have the "wrong types."  Should be exprs.
 	const StatementAssign &init;

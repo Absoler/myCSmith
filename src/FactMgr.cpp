@@ -388,6 +388,15 @@ for lhs = rhs, update lhs's facts
 bool
 FactMgr::update_fact_for_assign(const Lhs* lhs, const Expression* rhs, FactVec& inputs)
 {
+	if(rhs->term_type==eFunction){
+		const ExpressionFuncall* ef=(const ExpressionFuncall*)rhs;
+		if((ef->get_invoke())->invoke_type==eFuncCall){
+			const FunctionInvocationUser* invoke=(const FunctionInvocationUser*)ef->get_invoke();
+			if(invoke->get_func()->name=="func_39"){
+				printf("1");
+			}
+		}
+	}
 	bool changed = false;
     for (size_t i=0; i<FactMgr::meta_facts.size(); i++) {
         vector<const Fact*> facts = FactMgr::meta_facts[i]->abstract_fact_for_assign(inputs, lhs, rhs);

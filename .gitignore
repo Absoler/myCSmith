@@ -77,3 +77,8 @@ test/
 
 # prob file
 prob.txt
+
+
+checkRead/makefile
+
+output2.asm

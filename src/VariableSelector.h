@@ -38,7 +38,8 @@
 using namespace std;
 #include "Variable.h"
 #include "Type.h"
-
+#include "ArrayVariable.h"
+#include "Function.h"
 class CGContext;
 class Expression;
 class Function;
@@ -69,7 +70,12 @@ public:
 	static bool is_container_used(const Variable* &field, const vector<Variable*> &vars);
 	static bool is_field_used(const Variable* &container, const vector<Variable*> &vars);
 	static void generate_setGlobalInfos(ostream &out);	//for pintool, generate stmts in C code that call setInfo
-
+	
+	static vector<pair<const Variable*, int>> getPureIndices(const vector<const Expression*> &indices);	// extract all ctrl-vars and offsets from ArrayVariable
+	static vector<int> parseRange(const Range& range);
+	static vector<vector<int>> generateIndexValues(vector<pair<const Variable*, int>>&, map<const Variable*, Range>& rangesOfVar);	// return all values of each index, if repeat then return its index
+	static void setvarArray(ArrayMgr* mgr, vector<vector<int>> &index_values, int level, vector<int>& cur_choices);
+	
 	VariableSelector(void) {};
 	static Variable* new_variable(const std::string &name, const Type *type, const Expression* init, const CVQualifiers* qfer);
 	// ISSUE: use it only when you want to create a static variable

@@ -717,6 +717,45 @@ FactPointTo::merge_pointees_of_pointer(const Variable* ptr, int indirect, const 
 }
 
 std::map<int, std::vector<const Variable*>>
+FactPointTo::get_pointees_in_range(const Variable* ptr, const std::vector<const Fact*>& facts, int start_level, int end_level){
+	vector<const Variable*> tmp(1, ptr);
+	map<int, vector<const Variable*>> res;
+	// for an variable of n-ref type, its actual indrect level could be from -1 to n
+	// when we use a var directly, we care about pointees accessed in the current dereference process
+	// when we use a var as argument, we care about which pointees would be deref-ed in the future (inside the callee).
+	/*
+	(type of var is int***)
+		\	  /		***var
+		 \	 /		**var
+		  \ /		*var
+		  var	
+		   |		&var
+	*/
+	int level=0;
+	
+	if(start_level>end_level){
+		return res;
+	}
+
+	if(start_level==-1){
+		++level;
+	}
+
+	if(start_level<=0){
+		res[level].insert(res[level].end(), tmp.begin(), tmp.end());
+		level++;
+	}
+	for(int i=1;i<=end_level;i++){
+		tmp=FactPointTo::merge_pointees_of_pointers(tmp, facts);
+		if(start_level<=i){
+			res[level].insert(res[level].end(), tmp.begin(), tmp.end());
+			level++;
+		}
+	}
+	return res;
+}
+
+std::map<int, std::vector<const Variable*>>
 FactPointTo::get_pointees_under_level(const Variable* ptr, int indirect, const std::vector<const Fact*>& facts){
 	vector<const Variable*> tmp;
 	map<int, vector<const Variable*>> res;

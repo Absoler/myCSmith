@@ -335,11 +335,19 @@ StatementFor::make_random(CGContext &cg_context)
 
 	// create CGContext for body
 	CGContext body_cg_context(cg_context, cg_context.rw_directive, iv, bound);
+	
+	// record this ctrl-var's range in current function
+	Function* cur_func=cg_context.get_current_func();
+	assert(cur_func);
+	cur_func->rangesOfVar[iv]=make_tuple(get_init_value(init), get_test_value(test), get_incr_value(incr), get_test_op(test));
+
 	Block *body = Block::make_random(body_cg_context, true, get_init_value(init), get_test_value(test), get_incr_value(incr), get_test_op(test));
 	ERROR_GUARD_AND_DEL3(NULL, init, test, incr);
 
 	StatementFor* sf = new StatementFor(cg_context.get_current_block(), *init, *test, *incr, *body);
+	body->forstmt=sf;
 	sf->post_loop_analysis(cg_context, pre_facts, pre_effects);
+	sf->ctrlVar=iv;
 	return sf;
 }
 

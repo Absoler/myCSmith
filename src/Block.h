@@ -47,7 +47,7 @@
 
 #include "Statement.h"
 #include "Type.h"
-
+#include "StatementFor.h"
 class CGContext;
 class Statement;
 class Variable;
@@ -113,6 +113,7 @@ public:
 	size_t remove_stmt(const Statement* s);
 
 	int get_loop_num(int n=-1) const;
+	int get_loop_num(const ArrayVariable* av);
 	bool is_loop() const;
 	bool looping;
 
@@ -122,12 +123,13 @@ public:
 
 	std::vector<const Statement*> break_stms;
 
-	//only make sense when looping is true 
+	//only make sense when looping is true, this block is a for-stmt's body
 	int init;	
 	int test;
 	int incr;
 	int loopNum;
 
+	StatementFor* forstmt;
 private:
 
 	bool depth_protect;

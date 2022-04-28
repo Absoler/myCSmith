@@ -139,6 +139,14 @@ find_related_fact(const FactVec& facts, const Fact* new_fact)
             return facts[i];
         }
     }
+
+    for (i=0; i<facts.size(); i++) {
+        // if this is a const-array or var-array, when they don't have fact (firstly used), we give them fact of fa-array
+        if (new_fact->eCat==ePointTo&&facts[i]->eCat==ePointTo && new_fact->get_var()->get_collective()==facts[i]->get_var()) {
+            return facts[i];
+        }
+    }
+    
     vector<string> names;
     for (i=0; i<facts.size(); i++) {
         names.push_back(facts[i]->get_var()->name);

@@ -102,28 +102,45 @@ ExpressionVariable::make_random(CGContext &cg_context, const Type* type, const C
 		}
 		int valid = FactPointTo::opportunistic_validate(var, type, fm->global_facts);
 		
+		if(var->name=="g_103"&&as_param){
+			printf("1");
+		}
 		// if this var will be an arg, check whether it contain global that will be read in target function (with the same deref-level) 
 		VariableSet globals_in_param;	// these vars will be read if this var is qualified for arg
 		if(as_param && read_counter!=NULL && valid){
 			int indirect=var->type->get_indirect_level() - type->get_indirect_level();
-			map<int, VariableSet> vars=FactPointTo::get_pointees_under_level(var,indirect,fm->global_facts);
-			for(int i=1;i<=indirect&&valid; i++){
-				if(read_counter->find(i)==read_counter->end()){
-					//接下来的解引用不会在函数中被访问
-					break;
-				}
-				for(const Variable* v:vars[i]){
-					if(v->is_global()){
-						if((*read_counter)[i]>1 || ((*read_counter)[i]==1&&VariableSelector::check_var_loaded(v))){	//read more than once in the func or read once and it's already used
-							valid=false;
-							break;
-						}else{
-							if((*read_counter)[i]==1)
-								globals_in_param.push_back(v);
+			int end_level=var->type->get_indirect_level();
+			// if(indirect==-1){
+			// 	printf("-1 %s\n",var->name.c_str());
+			// 	if(var->is_global() && read_counter->find(1)!=read_counter->end()){
+			// 		if(read_counter->at(1)>1 || read_counter->at(1)==1&&VariableSelector::check_var_loaded(var)){
+			// 			valid=false;
+			// 		}else{
+			// 			if(read_counter->at(1)==1){
+			// 				globals_in_param.push_back(var);
+			// 			}
+			// 		}
+			// 	}
+			// }else{
+				map<int, VariableSet> vars=FactPointTo::get_pointees_in_range(var, fm->global_facts, indirect, end_level);
+				for(int i=1;i<=end_level&&valid; i++){
+					if(read_counter->find(i)==read_counter->end()){
+						//接下来的解引用不会在函数中被访问
+						break;
+					}
+					for(const Variable* v:vars[i]){
+						if(v->is_global()){
+							if((*read_counter)[i]>1 || ((*read_counter)[i]==1&&VariableSelector::check_var_loaded(v))){	//read more than once in the func or read once and it's already used
+								valid=false;
+								break;
+							}else{
+								if((*read_counter)[i]==1)
+									globals_in_param.push_back(v);
+							}
 						}
 					}
 				}
-			}
+			// }
 		}
 		
 		if (valid) {

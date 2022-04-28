@@ -49,7 +49,6 @@
 #include "CGOptions.h"
 #include "Constant.h"
 #include "Effect.h"
-#include "Function.h"
 #include "Type.h"
 #include "Fact.h"
 #include "FactMgr.h"
@@ -65,7 +64,6 @@
 #include "Error.h"
 #include "DepthSpec.h"
 #include "CFGEdge.h"
-#include "ArrayVariable.h"
 #include "Probabilities.h"
 #include "ProbabilityTable.h"
 #include "StringUtils.h"
@@ -385,11 +383,129 @@ VariableSelector::choose_visible_read_var(const Block *b, vector<const Variable 
 }
 
 
+vector<pair<const Variable*, int>> 
+VariableSelector::getPureIndices(const vector<const Expression*> &indices){
+    vector<pair<const Variable*, int>> res;
+    int size=indices.size();
+    for(int i=0;i<size;i++){
+        if(indices[i]->term_type==eVariable){
+            res.push_back(make_pair(((const ExpressionVariable*)indices[i])->get_var(), 0));
+        }else if(indices[i]->term_type==eFunction){
+            const ExpressionFuncall* funcall=(const ExpressionFuncall*)indices[i];
+            const FunctionInvocationBinary* sum=(const FunctionInvocationBinary*)funcall->get_invoke();
+            assert(sum->get_operation()==eAdd);
+            const Variable* index=((const ExpressionVariable*)sum->param_value[0])->get_var();
+            const Constant* offset=(const Constant*)sum->param_value[1];
+            res.push_back(make_pair(index, stoi(offset->get_value())));
+        }else{
+            assert(0);
+        }
+    }
+    return res;
+}
+
+vector<int>
+VariableSelector::parseRange(const Range& range){
+    vector<int> res;
+    int init=get<0>(range), test=get<1>(range), incr=get<2>(range);
+    eBinaryOps op=get<3>(range);
+    if(op==eCmpGe||op==eCmpGt){
+        for(int i=init; (op==eCmpGe&&i>=test || op==eCmpGt&&i>test); i-=incr){
+            res.push_back(i);
+        }
+    }else if(op==eCmpLe||op==eCmpLt){
+        for(int i=init; (op==eCmpLe&&i<=test ||op==eCmpLt&&i<test); i+=incr){
+            res.push_back(i);
+        }
+    }else{
+        assert(0);
+    }
+    return res;
+}
+
+vector<vector<int>> 
+VariableSelector::generateIndexValues(vector<pair<const Variable*, int>> &indices, map<const Variable*, Range>& rangesOfVar){
+    vector<vector<int>> res;
+    res.resize(indices.size());
+    int size=indices.size();
+    for(int i=0;i<size; i++){
+        int repeat=-1;
+        int offset=indices[i].second;
+        for(int j=0;j<i;j++){
+            if(indices[j].first==indices[i].first){
+                repeat=j;
+                break;
+            }
+        }
+        if(repeat==-1){
+            Range range=rangesOfVar[indices[i].first];
+            vector<int> tmp=parseRange(range);
+            for(int j=0;j<tmp.size();j++){
+                tmp[j]+=offset;
+            }
+            res[i]=vector<int>(1, offset);
+            res[i].insert(res[i].end(), tmp.begin(), tmp.end());
+        }else{
+            vector<int> tmp(1, offset);
+            tmp.push_back(-repeat-1);
+            res[i]=tmp;
+        }
+    }
+    return res;
+}
+
+void
+VariableSelector::setvarArray(ArrayMgr* mgr, vector<vector<int>> &index_values, int level, vector<int>& cur_choices){
+    assert(level<=index_values.size());
+    bool bottom=(level>=index_values.size());
+    assert(level<=index_values.size());
+    int size=(level==index_values.size()?0:index_values[level].size());
+    
+    /*
+    index_values[level] = ?
+    1. [offset, 2, 4, 6..]  the values of the level-th index 
+    2. [offset, -i] use the same var that the (i-1)-th index use
+    3. [] 0 loop, illegal for not bottom mgr
+    */
+    assert(bottom||size>1);
+    mgr->part_loaded=true;
+    if(!bottom){
+        if(index_values[level][1]<0){
+            int before=cur_choices[-index_values[level][1]-1];
+            int offset=index_values[level][0];
+            int old_offset=index_values[-index_values[level][1]-1][0];
+            cur_choices[level]=before+offset-old_offset;
+            // only [0..level] in cur_choices are legal
+            setvarArray(mgr->subMgrs[before+offset-old_offset], index_values, level+1, cur_choices);
+        }else{
+            for(int i=1,val;i<index_values[level].size();i++){
+                val=index_values[level][i];
+                cur_choices[level]=val;
+                setvarArray(mgr->subMgrs[val], index_values, level+1, cur_choices);
+            }
+        }
+        // try merge subMgr's loaded
+        bool success=true;
+        for(int i=0;i<mgr->len;i++){
+            if(!mgr->subMgrs[i]->loaded){
+                success=false;
+                break;
+            }
+        }
+        if(success){
+            mgr->loaded=true;
+        }
+    }else{
+        mgr->loaded=true;
+    }
+}
+
+
 //zkb
 void VariableSelector::set_used(const Variable *var, CGContext& context, bool isReturn) {
     //find the used target in GlobalList by name, and set its loaded = true
     bool get=false;
-    if(var->name=="g_1343.f3.f1"){
+    if(var->name=="g_846"){
         get=true;
         printf("set g_1343.f3.f1\n");
     }
@@ -429,7 +545,7 @@ void VariableSelector::set_used(const Variable *var, CGContext& context, bool is
                 }
             }    
         }
-
+    // Array
     }else if(var->isArray||var->get_top_container()->isArray){
         const ArrayVariable* av;
         if(!var->isArray){
@@ -478,68 +594,59 @@ void VariableSelector::set_used(const Variable *var, CGContext& context, bool is
                 //     printf("constInd %d indicesType %d\n",constInd,av->indicesType);
                 // }
                 assert(constInd&&av->indicesType==0 || !constInd && av->indicesType==1);
-                // if(indices.size()!=(av->get_sizes()).size()){
-                //     if(fa!=var&&fa==av){
-                //         printf("\nfa!=var&&fa==av\n");
-                //     }
-                //     if((void*)var==(void*)fa){
-                //         printf("(void*)var==(void*)fa\n");
-                //     }
-                //     if(fa!=av){
-                //         printf("%d\n",indicesExp.size());
-                //         assert((av->get_indices()).size()>0);
-                //     }
-                //     get=true;
-                //     printf("\nassert %s %d\n",av->get_name_withIndices().c_str(), haveIndices);
-                //     printf("%d\n",indices.size());
-                //     for(int v:indices){
-                //         printf(" %d\n",v);
-                //     }
-                //     printf("%d\n",(av->get_sizes()).size());
-                //     for(int v:av->get_sizes()){
-                //         printf(" %d\n",v);
-                //     }
-                // }
+                
                 assert(indices.size()==(av->get_sizes()).size());
-                //set arrMgr
-                ArrayMgr *mgr=fa->arrMgr;
-                stack<ArrayMgr*> mgrStk;
-                
-                for(unsigned i=0;i<indices.size();++i){
-                    int index=indices[i];
-                    mgr->part_loaded=true;
-                    if(index==-1){
-                        // index = -1 means it's not a constant, we think that it access all for sound
-                        mgr->loaded=true;
-                        break;
-                    }else{
-                        mgrStk.push(mgr);
-                        // }
+                if(constInd){
+                    //set arrMgr
+                    ArrayMgr *mgr=fa->arrMgr;
+                    stack<ArrayMgr*> mgrStk;
+                    
+                    for(unsigned i=0;i<indices.size();++i){
+                        int index=indices[i];
+                        mgr->part_loaded=true;
+                        if(index==-1){
+                            // index = -1 means it's not a constant, we think that it access all for sound
+                            mgr->loaded=true;
+                            break;
+                        }else{
+                            mgrStk.push(mgr);
+                            // }
+                        }
+                        mgr=mgr->subMgrs[index];
                     }
-                    mgr=mgr->subMgrs[index];
-                }
-                // tail mgr
-                mgr->part_loaded=true;
-                if(mgr->subMgrs.size()==0){
-                    mgr->loaded=true;
-                }
-                
-                //if all subMgrs are loaded, then mgr is loaded
-                while(!mgrStk.empty()){
-                    mgr=mgrStk.top();
-                    mgrStk.pop();
-                    if(mgr->loaded!=true){
-                        bool success=true;
-                        for(int i=0;i<mgr->len;i++){
-                            if(!mgr->subMgrs[i]->loaded){
-                                success=false;
-                                break;
+                    // tail mgr
+                    mgr->part_loaded=true;
+                    if(mgr->subMgrs.size()==0){
+                        mgr->loaded=true;
+                    }
+                    
+                    //if all subMgrs are loaded, then merge them => mgr is loaded
+                    while(!mgrStk.empty()){
+                        mgr=mgrStk.top();
+                        mgrStk.pop();
+                        if(mgr->loaded!=true){
+                            bool success=true;
+                            for(int i=0;i<mgr->len;i++){
+                                if(!mgr->subMgrs[i]->loaded){
+                                    success=false;
+                                    break;
+                                }
+                            }
+                            if(success){
+                                mgr->loaded=true;
                             }
                         }
-                        if(success){
-                            mgr->loaded=true;
-                        }
                     }
+                }else{
+                    printf("%s var array\n",av->name.c_str());
+                    if(av->name=="g_764"){
+                        printf("1");
+                    }
+                    vector<pair<const Variable*, int>> pureIndices=getPureIndices(av->get_indices());
+                    vector<vector<int>> indexVals=generateIndexValues(pureIndices, (context.get_current_func())->rangesOfVar);
+                    (context.get_current_func())->indexValsOfVar[av]=indexVals;
+                    vector<int> choices(av->get_indices().size(), 0);
+                    setvarArray(fa->arrMgr, indexVals, 0, choices);
                 }
             }
             // this assert is wrong, av may be a father and never experience itemize
@@ -560,15 +667,15 @@ void VariableSelector::set_used(const Variable *var, CGContext& context, bool is
             if(constInd){
                 record_globalUse(var, context, false, isReturn);
             }else if(haveIndices){
-                record_globalUse(var, context, true);
-                assert(!isReturn);
+                record_globalUse(var, context, true, isReturn);
+                // assert(!isReturn);
             }else{
                 if(get){
                     printf("%s set fa\n", var->name.c_str());
                 }
                 // when var!=fa and it didn't have indices either, it may come from facts derefed, not clear yet
-                record_globalUse(fa, context);
-                assert(!isReturn);
+                record_globalUse(fa, context, false, isReturn);
+                // assert(!isReturn);
             }
         }
     }else{
@@ -587,7 +694,7 @@ void VariableSelector::set_used(const Variable *var, CGContext& context, bool is
 }
 
 void VariableSelector::record_globalUse(const Variable* var, CGContext &context, bool isArrayOp, bool isReturn){
-    if(var->name=="g_635.f7"||var->name=="g_488.f0.f2.f1"){
+    if(var->name=="g_846"){
         printf("1");
     }
     if(context.get_current_block()->is_loop()){
@@ -595,11 +702,20 @@ void VariableSelector::record_globalUse(const Variable* var, CGContext &context,
         int loopNum=context.get_current_block()->get_loop_num();
         if(isArrayOp){
             const ArrayVariable* av=dynamic_cast<const ArrayVariable*>(var);
-            int dimension=av->get_sizes().size();
-            int array_loopNum=context.get_current_block()->get_loop_num(dimension);
-            loopNum /= array_loopNum;
+            
+            int array_loopNum=1;
+            for(vector<int> vs:context.get_current_func()->indexValsOfVar[av]){
+                if(vs[1]>=0){
+                    // if not repeat index
+                    array_loopNum*=(vs.size()-1);
+                }
+            }
+            assert(loopNum%array_loopNum==0);
+            
+            loopNum = loopNum/array_loopNum;
         }
         if(isReturn){
+            // if this var used as return val, then read one time at most
             loopNum=1;
         }
         context.get_current_func()->global_counter[var]+=loopNum;
@@ -724,32 +840,35 @@ VariableSelector::check_var_loaded(const Variable* var, bool isSource){
         
         const ArrayVariable* fa=dynamic_cast<const ArrayVariable*>(av->get_collective());
         if(fa!=av){
-            vector<const Expression*> indicesExp=av->get_indices();
-            assert(indicesExp.size()>0);    //assert if not father array, then it doesn't have indices
-            vector<int> indices;
-            //collect array indices
-            for(const Expression* index:indicesExp){
-                if(const Constant* constant=dynamic_cast<const Constant*>(index)){
-                    if(constant->get_type().eType==eSimple){
-                        int val=stoi(constant->get_value());
-                        indices.push_back(val);
+            if(av->indicesType==0){
+                vector<const Expression*> indicesExp=av->get_indices();
+                assert(indicesExp.size()>0);    //assert if not father array, then it doesn't have indices
+                vector<int> indices;
+                //collect array indices
+                for(const Expression* index:indicesExp){
+                    if(const Constant* constant=dynamic_cast<const Constant*>(index)){
+                        if(constant->get_type().eType==eSimple){
+                            int val=stoi(constant->get_value());
+                            indices.push_back(val);
+                        }
+                    }else{
+                        assert(0);
                     }
-                }else{
-                    indices.push_back(-1);
-                }
-            }
-            
-            ArrayMgr* mgr=fa->arrMgr;
-            for(int index:indices){
-                if(index==-1||mgr->loaded){
-                    break;
-                }
-                if(index!=-1){
-                    mgr=mgr->subMgrs[index];
                 }
                 
+                ArrayMgr* mgr=fa->arrMgr;
+                for(int index:indices){
+                    if(mgr->loaded){
+                        break;
+                    }
+                    mgr=mgr->subMgrs[index];
+                }
+                ban=mgr->loaded;
+            }else if(av->indicesType==1){
+                ban=fa->arrMgr->part_loaded;
+            }else{
+                assert(0);
             }
-            ban=mgr->loaded;
             // if(av->collective==0){
             //     ban=av->arrMgr->loaded;
             // }else{
@@ -844,7 +963,9 @@ VariableSelector::choose_var(vector<Variable *> vars,
         map<int, VariableSet> targets;
         targets=FactPointTo::get_pointees_under_level((*i), read_level, fm->global_facts);
         
-        
+        map<int, VariableSet> test_targets=FactPointTo::get_pointees_in_range((*i), fm->global_facts, 0, read_level);
+        assert(targets==test_targets);
+
         //if one of targets has been read, loaded will be true and this var can't be used
         bool loaded=false;
         for(int level=0; level<=read_level; level++){
@@ -987,6 +1108,9 @@ VariableSelector::GenerateNewGlobal(Effect::Access access, const CGContext &cg_c
                             : *qfer;
     ERROR_GUARD(NULL);
     string name = RandomGlobalName();
+    if(name=="g_103"){
+        printf("1");
+    }
     tmp_count++;
     Variable *var = create_and_initialize(access, cg_context, t, &var_qfer, 0, name);
 
@@ -1875,6 +1999,9 @@ VariableSelector::itemize_array(CGContext &cg_context, const ArrayVariable *av) 
         vector<const Variable *> ok_ivs;
         unsigned int dimen_len = av->get_sizes()[i];
         map<const Variable *, unsigned int>::iterator iter;
+        if(cg_context.iv_bounds.size()>1){
+            printf("1");
+        }
         for (iter = cg_context.iv_bounds.begin(); iter != cg_context.iv_bounds.end(); ++iter) {
             if (iter->second != INVALID_BOUND && iter->second < dimen_len) {    // in case that iv's range exceed the size
                 const Variable *iv = iter->first;
@@ -2002,10 +2129,10 @@ VariableSelector::find_var_by_name(string name) {
  */
 void
 VariableSelector::doFinalization(void) {
-    printf("\nall forVars:\n");
-    for(const Variable* v:forVars){
-        printf("%s\n",v->name.c_str());
-    }
+    // printf("\nall forVars:\n");
+    // for(const Variable* v:forVars){
+    //     printf("%s\n",v->name.c_str());
+    // }
     
     size_t i;
     for (i = 0; i < AllVars.size(); i++) {

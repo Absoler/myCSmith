@@ -48,6 +48,8 @@ class ArrayMgr{
 	int len,empty;
 	ArrayMgr():loaded(false),part_loaded(false),len(0){}
 	ArrayMgr(vector<unsigned int> sizes){
+		loaded=false;
+		part_loaded=false;
 		if(!sizes.empty()){
 			len=sizes.back();
 			empty=len;

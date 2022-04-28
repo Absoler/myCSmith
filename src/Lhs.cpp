@@ -98,9 +98,7 @@ Lhs::make_random(CGContext &cg_context, const Type* t, const CVQualifiers* qfer,
 		ERROR_GUARD(NULL);
 		assert(var);
 		bool valid = FactPointTo::opportunistic_validate(var, t, fm->global_facts) && !cg_context.get_effect_stm().is_written(var);
-		if(asExpression&&var->name=="l_9"){
-			printf("l_9 as expr\n");
-		}
+	
 		// we don't want signed integer for some operations, such as ++/-- which has potential of overflowing
 		// it's possible for unsigned bitfield to overflow: consider a 31-bit unsigned field that is promoted to 32-bit signed int before arithematics
 		if (valid && t->eType == eSimple && no_signed_overflow && (var->type->get_base_type()->is_signed() || var->isBitfield_)) {

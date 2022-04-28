@@ -43,6 +43,7 @@
 
 #include <string>
 #include <vector>
+#include <set>
 using namespace std;
 
 #include "Effect.h"
@@ -57,6 +58,7 @@ class Fact;
 class Constant;
 class CVQualifiers;
 
+typedef tuple<int,int,int, eBinaryOps> Range;	// init, test, incr, op
 ///////////////////////////////////////////////////////////////////////////////
 
 class Function
@@ -135,10 +137,13 @@ public:
 	static map<const Variable*, int> totalCounter;		//dynamic read times of forVars in program, considering for-loop and function call
 	static map<const Function*, int> calledCounter;		// record number of times funcs are called
 	static void cal_Counter();
+	set<const Variable*> getLiveVars();
 
 	map<const Variable*, int> stm_read_Counter;	// record current statement's read counter
 	map<pair<const Function*,const Function*>, int> stm_call_Counter;	// record current statement's calls
 
+	map<const Variable*, Range> rangesOfVar;	// record for-ctrl-var's upper & lower bounds
+	map<const Variable*, vector<vector<int>>> indexValsOfVar;	// record var-array's index values
 	static Function* first_func;
 
 	static string get_setVarCnt(string name, int cnt);
