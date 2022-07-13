@@ -116,7 +116,7 @@ OutputMgr::Output_getInfoFunc(std::ostream &out){
 
 void
 OutputMgr::Output_extraVariables(std::ostream &out){
-	out<<"int side=0;"<<endl;	//create side-effect for target behaviors
+	out<<"unsigned long side=0;"<<endl;	//create side-effect for target behaviors
 
 	out<<"struct VarInfo{"<<endl;
 	out<<"	unsigned long addr;"<<endl;
@@ -145,6 +145,19 @@ OutputMgr::Output_setReadCntFunc(std::ostream &out){
 }
 
 void
+OutputMgr::Output_handleTimeout(std::ostream &out){
+	out << "void handleSignal(int val){"<<endl;
+	out << "	if(val==SIGTERM){"<<endl;
+	out << "        printf(\"timeout\\n\");"<<endl;
+	out << "        FILE* resfile=fopen(\"timeout.out\",\"a\");"<<endl;
+	// out << "        fprintf(resfile, \"timeout in "+std::to_string(seed)+"\\n\" );"<<endl;	// this was originally written in output_header which has seed as parm
+	out << "        fclose(resfile);"<<endl;
+	out << "        exit(0);" <<endl;
+	out << "	}"<<endl;
+	out << "}"<<endl;
+}
+
+void
 OutputMgr::OutputMain(std::ostream &out)
 {
 	CGContext cg_context(GetFirstFunction() /* BOGUS -- not in first func. */,
@@ -162,7 +175,7 @@ OutputMgr::OutputMain(std::ostream &out)
 	OutputArrayInitializers(*VariableSelector::GetGlobalVariables(), out, 1);
 
 	// output set signal
-	out << "signal(SIGTERM, handleSignal);"<<endl;
+	out << "	signal(SIGTERM, handleSignal);"<<endl;
 
 	// in case of target functions are inlined
 	vector<string> useFuncs=generate_useFuncs();
@@ -178,47 +191,50 @@ OutputMgr::OutputMain(std::ostream &out)
 	out<<"	printf(\"%d\\n\",side);"<<endl;	//create side effect
 
 	
-	if (CGOptions::blind_check_global()) {
-		ExtensionMgr::OutputFirstFunInvocation(out, invoke);
-		std::vector<Variable *>& vars = *VariableSelector::GetGlobalVariables();
-		for (size_t i=0; i<vars.size(); i++) {
-			vars[i]->output_value_dump(out, "checksum ", 1);
-		}
-	}
-	else {
-		// set up a global variable that controls if we print the hash value after computing it for each global
-		out << "    int print_hash_value = 0;" << endl;
-		if (CGOptions::accept_argc()) {
-			out << "    if (argc == 2 && strcmp(argv[1], \"1\") == 0) print_hash_value = 1;" << endl;
-		}
+	// if (CGOptions::blind_check_global()) {
+	// 	ExtensionMgr::OutputFirstFunInvocation(out, invoke);
+	// 	std::vector<Variable *>& vars = *VariableSelector::GetGlobalVariables();
+	// 	for (size_t i=0; i<vars.size(); i++) {
+	// 		vars[i]->output_value_dump(out, "checksum ", 1);
+	// 	}
+	// }
+	// else {
+	// 	// set up a global variable that controls if we print the hash value after computing it for each global
+	// 	out << "    int print_hash_value = 0;" << endl;
+	// 	if (CGOptions::accept_argc()) {
+	// 		out << "    if (argc == 2 && strcmp(argv[1], \"1\") == 0) print_hash_value = 1;" << endl;
+	// 	}
 
-		out << "    platform_main_begin();" << endl;
-		if (CGOptions::compute_hash()) {
-			out << "    crc32_gentab();" << endl;
-		}
+	// 	out << "    platform_main_begin();" << endl;
+	// 	if (CGOptions::compute_hash()) {
+	// 		out << "    crc32_gentab();" << endl;
+	// 	}
 
-		ExtensionMgr::OutputFirstFunInvocation(out, invoke);
+	// 	ExtensionMgr::OutputFirstFunInvocation(out, invoke);
 
-	#if 0
+	// #if 0
 		out << "    ";
 		invoke->Output(out);
 		out << ";" << endl;
-	#endif
-		// resetting all global dangling pointer to null per Rohit's request
-		if (!CGOptions::dangling_global_ptrs()) {
-			OutputPtrResets(out, GetFirstFunction()->dead_globals);
-		}
+	// #endif
+	// 	// resetting all global dangling pointer to null per Rohit's request
+	// 	if (!CGOptions::dangling_global_ptrs()) {
+	// 		OutputPtrResets(out, GetFirstFunction()->dead_globals);
+	// 	}
 
-		if (CGOptions::step_hash_by_stmt())
-			OutputMgr::OutputHashFuncInvocation(out, 1);
-		else
-			HashGlobalVariables(out);
-		if (CGOptions::compute_hash()) {
-			out << "    platform_main_end(crc32_context ^ 0xFFFFFFFFUL, print_hash_value);" << endl;
-		} else {
-			out << "    platform_main_end(0,0);" << endl;
-		}
-	}
+	// 	if (CGOptions::step_hash_by_stmt())
+	// 		OutputMgr::OutputHashFuncInvocation(out, 1);
+	// 	else
+	// 		HashGlobalVariables(out);
+	// 	if (CGOptions::compute_hash()) {
+	// 		out << "    platform_main_end(crc32_context ^ 0xFFFFFFFFUL, print_hash_value);" << endl;
+	// 	} else {
+	// 		out << "    platform_main_end(0,0);" << endl;
+	// 	}
+	// }
+	outputln(out);
+	VariableSelector::generate_setVarSide(out);
+	outputln(out);
 	ExtensionMgr::OutputTail(out);
 	out << "}" << endl;
 	delete invoke;
@@ -356,7 +372,15 @@ OutputMgr::OutputHeader(int argc, char *argv[], unsigned long seed)
 
 	ExtensionMgr::OutputHeader(out);
 
-	out << runtime_include << endl;
+	// out << runtime_include << endl;
+	out<<"typedef signed char int8_t;\n\
+typedef unsigned char uint8_t;\n\
+typedef signed short int int16_t;\n\
+typedef unsigned short int uint16_t;\n\
+typedef signed int int32_t;\n\
+typedef unsigned int uint32_t;\n\
+typedef signed long int int64_t;\n\
+typedef unsigned long int uint64_t;\n";
 
  	if (!CGOptions::compute_hash()) {
 		if (CGOptions::allow_int64())
@@ -366,7 +390,7 @@ OutputMgr::OutputHeader(int argc, char *argv[], unsigned long seed)
 	}
 	out << endl;
 
-	out << "static long __undefined;" << endl;
+	// out << "static long __undefined;" << endl;
 	out << endl;
 
 	if (CGOptions::depth_protect()) {
@@ -396,15 +420,7 @@ OutputMgr::OutputHeader(int argc, char *argv[], unsigned long seed)
 	out << "#include<stdlib.h>\n";
 	out << "#include<signal.h>\n";
 	out << "#include<stdio.h>\n";
-	out << "void handleSignal(int val){"<<endl;
-	out << "	if(val==SIGTERM){"<<endl;
-	out << "        printf(\"timeout\\n\");"<<endl;
-	out << "        FILE* resfile=fopen(\"timeout.out\",\"a\");"<<endl;
-	out << "        fprintf(resfile, \"timeout in "+std::to_string(seed)+"\\n\" );"<<endl;
-	out << "        fclose(resfile);"<<endl;
-	out << "        exit(0);" <<endl;
-	out << "	}"<<endl;
-	out << "}"<<endl;
+	out << "#include<string.h>\n";
 }
 
 void

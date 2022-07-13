@@ -354,7 +354,7 @@ main(int argc, char **argv)
 	g_Seed = platform_gen_seed();
 	// g_Seed=698243136;	// many var array
 	// g_Seed=2102890690;	
-	g_Seed=2139970860;
+	// g_Seed=2139970860;
 	// g_Seed=2546092965;	//bitfield
 	// g_Seed=2555218732;	// repeat access g_209[0][0]
 	// g_Seed=2581106399;	// unroll loop g_215, g_10

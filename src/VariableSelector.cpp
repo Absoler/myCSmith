@@ -765,6 +765,24 @@ void VariableSelector::generate_setGlobalInfos(ostream &out){
     }
 }
 
+void VariableSelector::generate_setVarSide(ostream &out){
+    std::set<string> names;
+    for(Variable *v:GlobalList){
+        string name;
+        if(v->type->eType==eSimple || v->type->eType==ePointer || v->isArray){
+            name="(unsigned long)"+v->name;
+        }else{
+            name="(unsigned long)&"+v->name;
+        }
+        names.insert(name);
+    }
+    for(string name:names){
+        output_tab(out, 1);
+        out<<"side=(side+"+name+")%1000;";
+        outputln(out);
+    }
+}
+
 /*
 If current var is a field of a struct/union, then it can't be read if its container has been read.
 For union, if a different member has been read, this field could have been accessed too. 

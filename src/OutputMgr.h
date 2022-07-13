@@ -94,6 +94,7 @@ protected:
 	void Output_getInfoFunc(std::ostream &out);	//for pintool
 	void Output_setInfoFunc(std::ostream &out);
 	void Output_setReadCntFunc(std::ostream &out);
+	void Output_handleTimeout(std::ostream &out);
 private:
 
 	static bool is_monitored_func(void);

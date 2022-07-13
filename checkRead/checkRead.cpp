@@ -23,6 +23,7 @@ using std::pair;
 string targetFuncPrefix;
 FILE* outfile;
 FILE* resfile;
+FILE* cntfile;
 bool fail=false;
 
 struct Var{	//record a var
@@ -42,7 +43,6 @@ void print_globals(FILE* file);
 //---------get global info------------
 VOID record_var(ADDRINT _addr, ADDRINT cnt){
     // printf("pin info-addr: %lu    cnt: %ld\n",_addr,cnt);
-    printf("num of global vars  %ld\n",cnt);
     if(cnt>MAX_GLOBAL_VAR_NUM){
         printf("too many global variables!\n");
         exit(1);
@@ -210,7 +210,7 @@ map<Read, bool> isGlobals;    // record whether a read located in global, not ne
 map<ADDRINT, string> disasMap;  // store instruction text
 
 inline int getInd(const Read& read){
-    return upper_bound(globals, globals+cnt_globals, (Var){read.first, read.second}, comp_Var)-globals-1;
+    return upper_bound(globals, globals+cnt_globals, (Var){read.first, read.second, ""}, comp_Var)-globals-1;
 }
 
 inline bool partOf(const Read& read, const Var& var){
@@ -229,7 +229,6 @@ bool isGlobal(const Read &read){
     if(id>=0 && id<cnt_globals){
         res = partOf(read, globals[id]);
     }
-
     return res;
 }
 
@@ -264,9 +263,6 @@ VOID hack_setReadCnt(RTN rtn, VOID* v){
 VOID record_Read(ADDRINT ip, ADDRINT start, UINT32 len) { 
     Read read=std::make_pair(start, len);
     if(isGlobal(read)){
-        if(start==0x406c80){
-            printf("%s\n",disasMap[ip].c_str());
-        }
         actual_counter[read]++;
         if(instOfRead[read].find(ip)==instOfRead[read].end()){
             // we don't know this inst load this content before
@@ -290,7 +286,7 @@ VOID hack_targetFunc(RTN rtn, VOID* v){
 
 //----------analysis--------
 VOID Fini(INT32 code, VOID* val){
-    
+    printf("nothing at start of fini\n");
     print_globals(outfile);
 
     // build relations between global vars and global reads
@@ -327,10 +323,23 @@ VOID Fini(INT32 code, VOID* val){
                     expect_cnt+=expect_counter[read];
                 }
                 if(actual_cnt>expect_cnt){
+                    fprintf(cntfile, "%s    %d\n", globals[varOfRead[read]].name, actual_cnt);
                     fprintf(outfile, "%s: start at 0x%lx of len = %d\n", globals[varOfRead[read]].name, read.first, read.second);
                     fprintf(outfile, "expected %d but read %d\n", expect_cnt, actual_cnt);
+                    fprintf(outfile, "insts of main read:\n");
                     for(ADDRINT ip: instOfRead[read]){
-                        fprintf(outfile, "%lx  %s\n", ip, disasMap[ip].c_str());
+                        fprintf(outfile, "  %lx  %s\n", ip, disasMap[ip].c_str());
+                    }
+                    fprintf(outfile,"insts of other reads\n");
+                    for(Read otherRead:actual_set){
+                        if(otherRead==read){
+                            continue;
+                        }
+                        fprintf(outfile, "  start at 0x%lx of len = %d\n", otherRead.first, otherRead.second);
+                        for(ADDRINT ip: instOfRead[otherRead]){
+                            fprintf(outfile, "  %lx  %s\n", ip, disasMap[ip].c_str());
+                        }
+                        fprintf(outfile, "\n");
                     }
                     fprintf(outfile, "\n");
                     fail=true;
@@ -351,6 +360,8 @@ VOID Fini(INT32 code, VOID* val){
     }
     
     fprintf(resfile,(fail?"1":"0"));
+    printf("nothing at end of fini\n");
+
 }
 
 #endif
@@ -363,9 +374,11 @@ INT32 Usage(){
 
 int main(int argc, char* argv[]){
     targetFuncPrefix=argv[argc-1];
+    printf("target: %s\n", targetFuncPrefix.c_str());
     PIN_InitSymbols();
     outfile=fopen("checkRead.out", "w");
     resfile=fopen("result.out", "w");
+    cntfile=fopen("cnt.out", "w");
     if(PIN_Init(argc, argv)) return Usage();
 
     RTN_AddInstrumentFunction(hack_getInfo, 0);
@@ -375,6 +388,11 @@ int main(int argc, char* argv[]){
     PIN_AddFiniFunction(Fini, 0);
 
     PIN_StartProgram();  
+    
+    fclose(outfile);
+    fclose(resfile);
+    fclose(cntfile);
+    
     return 0;
 }
 

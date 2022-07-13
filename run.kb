@@ -1,14 +1,57 @@
 #! /bin/bash
-cnt=$1
-while [ $cnt -gt 0 ]
+
+#-----
+#   this script invoke csmith to generate C files and judge 
+#   whether a multi-load problem happen on a compiler
+#   
+#   args[1] is the number of tests
+#   
+#-----
+
+if [ $# -ge 1 ]; then
+    limit=$1
+else
+    limit=1000000000
+fi
+compilers=("gcc-12.1"  "icc")
+
+# 1th line of base.out is the number of C cases, 2th line is the next of current reduced case
+read base < ./base.out
+
+cnt=0
+fail_cnt=0  # recording the number of problem cases
+pin_err=0
+while [ $cnt -lt $limit ]
+# while true
 do
-    build/src/csmith --no-safe-math --no-bitfields --no-volatiles --probability-configuration ./prob.txt -o runtime/output2.c
-    gcc-11.3 runtime/output2.c -g -w -O1 -o runtime/output2
-    timeout -s SIGTERM 5s ../pin-3.21-98484-ge7cd811fd-gcc-linux/pin -t checkRead/obj-intel64/checkRead.so -- runtime/output2 func
-    read line < ./result.out
-    if [ $line == 1 ] ; then
-        echo 'fail'
-        cnt=0
+    build/src/csmith --no-safe-math --no-bitfields --no-volatiles --probability-configuration ./prob.txt  -o runtime/output2.c 1>/dev/null
+    fail=0  # fail flag
+    for compiler in ${compilers[*]} ; do
+        $compiler runtime/output2.c -g -w -O1 -o runtime/output2
+        timeout -s SIGTERM 5s ../pin-3.21-98484-ge7cd811fd-gcc-linux/pin -t checkRead/obj-intel64/checkRead.so -- runtime/output2 func 1>/dev/null
+        if [ $? -gt 0 ] ; then
+            ((pin_err++))
+        fi
+        read line < ./result.out
+        if [ $line == 1 ] ; then
+            fail=1
+            ./record.kb ${compiler} $[ base + fail_cnt ]
+            echo $compiler fail
+        fi    
+       
+    done
+    
+    if [ $fail == 1 ] ; then
+        ((fail_cnt++))
+        sed "1c $[base+fail_cnt]" -i base.out
     fi
-    ((cnt--))
+
+    if [ $[cnt%1000] == 0 ] ; then
+        echo $cnt cases tested
+        echo pin error $pin_err
+    fi
+    
+    ((cnt++))
 done
+
+printf "%d cases tested\n" $cnt

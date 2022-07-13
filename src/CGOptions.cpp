@@ -79,6 +79,7 @@ int CGOptions::pointer_size_ = 0;
 
 ///////////////////////////////////////////////////////////////////////////////
 
+DEFINE_GETTER_SETTER_BOOL(verbose)
 DEFINE_GETTER_SETTER_BOOL(compute_hash)
 DEFINE_GETTER_SETTER_BOOL(depth_protect)
 DEFINE_GETTER_SETTER_INT (max_split_files)
@@ -210,6 +211,7 @@ CGOptions::set_default_builtin_kinds()
 void
 CGOptions::set_default_settings(void)
 {
+	verbose(false);
 	set_platform_specific_options();
 	compute_hash(true);
 	max_funcs(CGOPTIONS_DEFAULT_MAX_SPLIT_FILES);
@@ -289,7 +291,7 @@ CGOptions::set_default_settings(void)
 	signed_char_index(true);
 	identify_wrappers(false);
 	mark_mutable_const(false);
-	force_globals_static(true);
+	force_globals_static(false);
 	force_non_uniform_array_init(true);
 	max_array_num_in_loop(CGOPTIONS_DEFAULT_MAX_ARRAY_NUM_IN_LOOP);
 	inline_function_prob(50);

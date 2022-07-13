@@ -1,8 +1,13 @@
 #! /bin/bash
-cnt=$(find problem/ -type f | wc -l)
-(( cnt=cnt/2 ))
-echo $cnt
-(( cnt++ ))
-cp checkRead.out problem/${cnt}checkRead.out
-cp runtime/output2.c problem/${cnt}output.c
-cp runtime/output2 problem/${cnt}output
+compiler=""
+if [ $# -lt 2 ]; then
+    echo args not enough
+    exit 1 
+fi
+
+compiler=$1
+cnt=$2
+
+cp checkRead.out problem/${cnt}_${compiler}_checkRead.out
+cp runtime/output2.c problem/${cnt}_output.c
+objdump -d runtime/output2 > problem/${cnt}_${compiler}_output.asm

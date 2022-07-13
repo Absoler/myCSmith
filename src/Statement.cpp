@@ -276,8 +276,8 @@ Statement::make_random(CGContext &cg_context,
 		s = Block::make_random(cg_context);
 		break;
 	case eFor:
-		s = StatementFor::make_random(cg_context);
-		break;
+		// s = StatementFor::make_random(cg_context);
+		// break;
 	case eIfElse:
 		s = StatementIf::make_random(cg_context);
 		break;
@@ -297,7 +297,7 @@ Statement::make_random(CGContext &cg_context,
 		// s = StatementGoto::make_random(cg_context);
 		// break;
 	case eArrayOp:
-		s = StatementArrayOp::make_random(cg_context);
+		s = StatementAssign::make_random(cg_context);
 		break;
 	}
 

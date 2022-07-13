@@ -223,9 +223,10 @@ DefaultOutputMgr::Output()
 	Output_getInfoFunc(out);
 	Output_setInfoFunc(out);
 	Output_setReadCntFunc(out);
+	Output_handleTimeout(out);
 	if (!CGOptions::nomain())
 		OutputMain(out);
-	OutputTail(out);
+	// OutputTail(out);
 	DeltaMonitor::Output(out);
 }
 

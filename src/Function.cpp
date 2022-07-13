@@ -974,47 +974,49 @@ Function::getLiveVars(){
 void
 Function::doFinalization(void)
 {
-	printf("information of read counter of each function\n");
-	for(Function* func:FuncList){
-		printf("%s:\n", func->name.c_str());
-		for(auto p:func->global_counter){
+	if(CGOptions::verbose()){
+		printf("information of read counter of each function\n");
+		for(Function* func:FuncList){
+			printf("%s:\n", func->name.c_str());
+			for(auto p:func->global_counter){
+				string name=p.first->name;
+				if(const ArrayVariable* av=dynamic_cast<const ArrayVariable*>(p.first)){
+					name=av->get_name_withIndices();
+				}
+				printf("%s: %d\n", name.c_str(), p.second);
+			}
+		}
+		
+		printf("\ninformation of param read\n");
+		for(Function* func:FuncList){
+			printf("%s:\n", func->name.c_str());
+			for(auto p:func->param_read_counter){
+				printf("%s\n", p.first->name.c_str());
+				for(auto pp:p.second){
+					printf("level: %d	cnt: %d\n", pp.first, pp.second);
+				}
+				printf("\n");
+			}
+		}
+		printf("\ninformation of callGraph\n");
+		for(auto p=callGraph.begin();p!=callGraph.end();p++){
+			printf("%s --> %s : %d\n",
+			p->first.first->name.c_str(),
+			p->first.second->name.c_str(),
+			p->second);
+		}
+		printf("\ninformation of calledCounter\n");
+		for(auto p: calledCounter){
+			printf("%s %d\n",p.first->name.c_str(), p.second);
+		}
+		printf("\ninformation of total reads\n");
+		for(auto p:totalCounter){
 			string name=p.first->name;
 			if(const ArrayVariable* av=dynamic_cast<const ArrayVariable*>(p.first)){
 				name=av->get_name_withIndices();
 			}
-			printf("%s: %d\n", name.c_str(), p.second);
+			printf("%s %d\n", name.c_str(), p.second);
 		}
-	}
-	
-	printf("\ninformation of param read\n");
-	for(Function* func:FuncList){
-		printf("%s:\n", func->name.c_str());
-		for(auto p:func->param_read_counter){
-			printf("%s\n", p.first->name.c_str());
-			for(auto pp:p.second){
-				printf("level: %d	cnt: %d\n", pp.first, pp.second);
-			}
-			printf("\n");
-		}
-	}
-	printf("\ninformation of callGraph\n");
-	for(auto p=callGraph.begin();p!=callGraph.end();p++){
-		printf("%s --> %s : %d\n",
-		p->first.first->name.c_str(),
-		p->first.second->name.c_str(),
-		p->second);
-	}
-	printf("\ninformation of calledCounter\n");
-	for(auto p: calledCounter){
-		printf("%s %d\n",p.first->name.c_str(), p.second);
-	}
-	printf("\ninformation of total reads\n");
-	for(auto p:totalCounter){
-		string name=p.first->name;
-		if(const ArrayVariable* av=dynamic_cast<const ArrayVariable*>(p.first)){
-			name=av->get_name_withIndices();
-		}
-		printf("%s %d\n", name.c_str(), p.second);
 	}
 	for_each(FuncList.begin(), FuncList.end(), std::ptr_fun(deleteFunction));
 

@@ -1,0 +1,8 @@
+#! /bin/bash
+cd /home/csmith-2.3.0
+cp problem/$1 test/output2.c && cd test
+./pl.pm output2.c $2
+cat target.c > full.c
+cat main.c >> full.c
+cp full.c ../problem/$1
+cd ..

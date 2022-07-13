@@ -1869,10 +1869,10 @@ void OutputStructUnion(Type* type, std::ostream &out)
         // output myself
         if (type->packed_) {
             if (!CGOptions::ccomp()) {
-                out << "#pragma pack(push)";
+                // out << "#pragma pack(push)";
                 really_outputln(out);
             }
-            out << "#pragma pack(1)";
+            // out << "#pragma pack(1)";
             really_outputln(out);
         }
         type->Output(out);
@@ -1922,10 +1922,10 @@ void OutputStructUnion(Type* type, std::ostream &out)
 		really_outputln(out);
         if (type->packed_) {
 		if (CGOptions::ccomp()) {
-			out << "#pragma pack()";
+			// out << "#pragma pack()";
 		}
 		else {
-			out << "#pragma pack(pop)";
+			// out << "#pragma pack(pop)";
 		}
 		really_outputln(out);
         }
