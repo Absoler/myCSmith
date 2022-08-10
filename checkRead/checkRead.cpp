@@ -210,7 +210,8 @@ map<Read, bool> isGlobals;    // record whether a read located in global, not ne
 map<ADDRINT, string> disasMap;  // store instruction text
 
 inline int getInd(const Read& read){
-    return upper_bound(globals, globals+cnt_globals, (Var){read.first, read.second, ""}, comp_Var)-globals-1;
+    Var tmp = {read.first, read.second, ""};
+    return upper_bound(globals, globals+cnt_globals, tmp, comp_Var)-globals-1;
 }
 
 inline bool partOf(const Read& read, const Var& var){
@@ -262,7 +263,9 @@ VOID hack_setReadCnt(RTN rtn, VOID* v){
 //----------record read info-----------
 VOID record_Read(ADDRINT ip, ADDRINT start, UINT32 len) { 
     Read read=std::make_pair(start, len);
+    // printf("%lx\n", start);
     if(isGlobal(read)){
+        // printf("%lx\n", start);
         actual_counter[read]++;
         if(instOfRead[read].find(ip)==instOfRead[read].end()){
             // we don't know this inst load this content before
@@ -273,7 +276,8 @@ VOID record_Read(ADDRINT ip, ADDRINT start, UINT32 len) {
 
 VOID hack_targetFunc(RTN rtn, VOID* v){
     RTN_Open(rtn);
-    if(RTN_Name(rtn).substr(0,targetFuncPrefix.length())==targetFuncPrefix){
+    string funcName = RTN_Name(rtn);
+    if (funcName.find(targetFuncPrefix) !=  funcName.npos) {
         for (INS ins = RTN_InsHead(rtn); INS_Valid(ins); ins = INS_Next(ins)){
             if (INS_IsMemoryRead(ins)){
                 disasMap[INS_Address(ins)] = INS_Disassemble(ins);

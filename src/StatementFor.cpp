@@ -333,6 +333,9 @@ StatementFor::make_random(CGContext &cg_context)
 	Effect pre_effects = cg_context.get_effect_stm();
 	vector<const Fact*> pre_facts = fm->global_facts;
 
+	ReadCounter headCounter = cg_context.get_current_func()->stm_read_Counter;
+	cg_context.get_current_func()->stm_read_Counter.clear();
+
 	// create CGContext for body
 	CGContext body_cg_context(cg_context, cg_context.rw_directive, iv, bound);
 	
@@ -346,6 +349,11 @@ StatementFor::make_random(CGContext &cg_context)
 
 	StatementFor* sf = new StatementFor(cg_context.get_current_block(), *init, *test, *incr, *body);
 	body->forstmt=sf;
+	
+	sf->merge_readCounter(headCounter);
+	sf->merge_readCounter(body->read_counter);
+	sf->merge_callCounter(body->call_counter);
+	
 	sf->post_loop_analysis(cg_context, pre_facts, pre_effects);
 	sf->ctrlVar=iv;
 	return sf;

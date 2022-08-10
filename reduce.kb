@@ -1,8 +1,23 @@
 #! /bin/bash
 cd /home/csmith-2.3.0
-cp problem/$1 test/output2.c && cd test
-./pl.pm output2.c $2
-cat target.c > full.c
-cat main.c >> full.c
-cp full.c ../problem/$1
-cd ..
+cp problem/$1 test/reduce.c 
+file=$1
+echo ${file%_*}_checkRead.out
+cp problem/${file%_*}_checkRead.out test/checkRead.old
+cd test
+awk -F ' ' '/g_[0-9]+:/{print $1}' checkRead.old > vars.out
+./pl.pm reduce.c $2
+state=$?
+if [ $state -eq 0 ] ; then
+    > full.c
+    cat define.c >> full.c
+    cat target.c >> full.c
+    cat main.c >> full.c
+    cp full.c ../patterns/$1
+    cd ..
+    echo reduce $1 successfully >> reduce.log
+else
+    echo reduce $1 fail >> reduce.log
+fi
+
+

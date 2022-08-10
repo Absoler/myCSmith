@@ -1,0 +1,35 @@
+#! /bin/bash
+#   ------------
+#   循环检查缓冲区中的待测文件是否全部被取走使用，如果是则再生成一批
+#   args[0]是循环轮数
+#   ------------
+buffer_len=10   # csmith一次性生成的待测文件数量
+period=1    # 检查间隔/us
+
+if [ $# -lt 1 ] ; then
+    limit=1000
+else
+    limit=$1
+fi
+
+cnt=0
+
+while [ $cnt -lt $limit ]
+do
+    for i in $(seq 1 ${buffer_len})
+    do
+    ../build/src/csmith --no-safe-math --no-bitfields --no-volatiles --probability-configuration ../prob.txt  -o buffer/${i}_output.c 1>/dev/null
+    done
+    ((cnt++))
+    # echo 1 > flag.txt
+
+    # while [ "`ls buffer | wc -l`" -gt 0 ] ; do
+    #     sleep ${period}
+    # done
+
+    # read flag < flag.txt
+    # while [ $flag -ne 0 ] ; do
+    #     sleep ${period}
+    #     read flag < flag.txt
+    # done
+done

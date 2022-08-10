@@ -100,6 +100,8 @@ private:
 	bool pure;
 	bool side_effect_free;
 
+	static Effect all_effect;
+	static bool is_revisit;
 	static const Effect empty_effect;
 };
 

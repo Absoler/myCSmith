@@ -91,6 +91,11 @@ StatementIf::make_random(CGContext &cg_context)
 	}
 	Effect eff = cg_context.get_effect_stm();
 
+	ReadCounter expr_readCounter = cg_context.get_current_func()->stm_read_Counter;
+	cg_context.get_current_func()->stm_read_Counter.clear();
+	CallCounter expr_callCounter = cg_context.get_current_func()->stm_call_Counter;
+	cg_context.get_current_func()->stm_call_Counter.clear();
+
 	// this will save global_facts to map_facts_in[if_true], and update
 	// facts for new variables created while generating if_true
 	Block *if_true = Block::make_random(cg_context);
@@ -105,6 +110,12 @@ StatementIf::make_random(CGContext &cg_context)
 	// compute accumulated effect for this statement
 	si->set_accumulated_effect_after_block(eff, if_true, cg_context);
 	si->set_accumulated_effect_after_block(eff, if_false, cg_context);
+	si->merge_readCounter(expr_readCounter);
+	si->merge_readCounter(if_true->read_counter);
+	si->merge_readCounter(if_false->read_counter);
+	si->merge_callCounter(expr_callCounter);
+	si->merge_callCounter(if_true->call_counter);
+	si->merge_callCounter(if_false->call_counter);
     return si;
 }
 

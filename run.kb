@@ -8,6 +8,8 @@
 #   
 #-----
 
+# 1665 for start
+
 if [ $# -ge 1 ]; then
     limit=$1
 else
@@ -20,7 +22,7 @@ read base < ./base.out
 
 cnt=0
 fail_cnt=0  # recording the number of problem cases
-pin_err=0
+run_err=0
 while [ $cnt -lt $limit ]
 # while true
 do
@@ -28,9 +30,13 @@ do
     fail=0  # fail flag
     for compiler in ${compilers[*]} ; do
         $compiler runtime/output2.c -g -w -O1 -o runtime/output2
+        if [ $? -gt 0 ] ; then
+            echo $compiler compilation error
+        fi 
         timeout -s SIGTERM 5s ../pin-3.21-98484-ge7cd811fd-gcc-linux/pin -t checkRead/obj-intel64/checkRead.so -- runtime/output2 func 1>/dev/null
         if [ $? -gt 0 ] ; then
-            ((pin_err++))
+            ((run_err++))
+            continue
         fi
         read line < ./result.out
         if [ $line == 1 ] ; then
@@ -48,7 +54,7 @@ do
 
     if [ $[cnt%1000] == 0 ] ; then
         echo $cnt cases tested
-        echo pin error $pin_err
+        echo pin error $run_err
     fi
     
     ((cnt++))

@@ -106,7 +106,7 @@ public:
 
 	bool contains_back_edge(void) const;
 
-	bool find_fixed_point(vector<const Fact*> inputs, vector<const Fact*>& post_facts, CGContext& cg_context, int& fail_index, bool visit_once) const;
+	bool find_fixed_point(vector<const Fact*> inputs, vector<const Fact*>& post_facts, CGContext& cg_context, int& fail_index, bool visit_once, bool fromPost=false) const;
 
 	void post_creation_analysis(CGContext& cg_context, const Effect& pre_effect);
 

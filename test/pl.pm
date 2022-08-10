@@ -19,7 +19,7 @@ $main_file="main.c";
 
 $target_pat="FUNCTIONS";
 $target_start=-1;
-$main_pat="int side=0";
+$main_pat="side=0";
 $main_start=-1;
 
 open $file, "<", $src_file or die "open file failed:$!";
@@ -51,11 +51,11 @@ close(file);
 
 # print(@main);
 
-open $file, ">", $target_file;
+open $file, ">", $define_file;
 print $file @defs;
 close file;
 
-open $file, ">>", $target_file;
+open $file, ">", $target_file;
 print $file @targets;
 close file;
 
@@ -63,13 +63,14 @@ open $file, ">", $main_file;
 print $file @main;
 close file;
 
+my $stat;
 
 if($compiler =~ m/gcc/){
-    system("creduce ./judge_gcc.kb target.c");
+    $stat = system("creduce ./judge_gcc.kb target.c");
 }elsif($compiler =~ m/clang/){
-    system("creduce ./judge_clang.kb target.c");
+    $stat = system("creduce ./judge_clang.kb target.c");
 }elsif($compiler =~ m/icc/){
-    system("creduce ./judge_icc.kb target.c");
+    $stat = system("creduce ./judge_icc.kb target.c");
 }
-
+exit $stat;
 # system("creduce `./judge.sh @{[$compiler]}` target.c");

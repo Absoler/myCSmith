@@ -276,8 +276,8 @@ Statement::make_random(CGContext &cg_context,
 		s = Block::make_random(cg_context);
 		break;
 	case eFor:
-		// s = StatementFor::make_random(cg_context);
-		// break;
+		s = StatementFor::make_random(cg_context);
+		break;
 	case eIfElse:
 		s = StatementIf::make_random(cg_context);
 		break;
@@ -313,6 +313,26 @@ Statement::make_random(CGContext &cg_context,
 	s->parent = cg_context.get_current_block();
 	s->post_creation_analysis(pre_facts, pre_effect, cg_context);
 	return s;
+}
+
+bool
+Statement::merge_readCounter(ReadCounter& counter){
+	bool repeat=false;
+	for(auto p:counter){
+		if(read_counter.find(p.first)!=read_counter.end()){
+			repeat=true;	//两个地方记录了对同一个变量的读，有问题
+			break;
+		}
+		read_counter[p.first]=p.second;
+	}
+	return repeat;
+}
+
+void
+Statement::merge_callCounter(CallCounter& counter){
+	for(auto p: counter){
+		call_counter[p.first] += p.second;
+	}
 }
 
 std::vector<const ExpressionVariable*>
@@ -590,7 +610,7 @@ Statement::shortcut_analysis(vector<const Fact*>& inputs, CGContext& cg_context)
  * shortcut: if this input env matches previous input env, use previous output env directly
  ***************************************************************************************/
 bool
-Statement::validate_and_update_facts(vector<const Fact*>& inputs, CGContext& cg_context) const
+Statement::validate_and_update_facts(vector<const Fact*>& inputs, CGContext& cg_context, bool fromPost) const
 {
 	FactMgr* fm = get_fact_mgr_for_func(func);
 	int shortcut = shortcut_analysis(inputs, cg_context);
@@ -616,7 +636,7 @@ Statement::validate_and_update_facts(vector<const Fact*>& inputs, CGContext& cg_
 	if (shortcut==1) return false;
 
 	vector<const Fact*> inputs_copy = inputs;
-	if (!stm_visit_facts(inputs, cg_context)) {
+	if (!stm_visit_facts(inputs, cg_context, fromPost)) {
 		return false;
 	}
 	fm->set_fact_in(this, inputs_copy);
@@ -625,7 +645,7 @@ Statement::validate_and_update_facts(vector<const Fact*>& inputs, CGContext& cg_
 }
 
 bool
-Statement::stm_visit_facts(vector<const Fact*>& inputs, CGContext& cg_context) const
+Statement::stm_visit_facts(vector<const Fact*>& inputs, CGContext& cg_context, bool fromPost) const
 {
 	cg_context.get_effect_stm().clear();
 	cg_context.curr_blk = parent;
@@ -634,6 +654,46 @@ Statement::stm_visit_facts(vector<const Fact*>& inputs, CGContext& cg_context) c
 	//int h = g++;
 	bool ok = visit_facts(inputs, cg_context);
 
+	if(fromPost){
+		bool more=true;
+		Effect new_eff = cg_context.get_effect_stm();
+		VariableSet read_vars = new_eff.get_read_vars();
+		vector<const Function*> called;
+		for(auto p: call_counter){
+			called.push_back(p.first.second);
+		}
+		for(const Variable* var : read_vars){
+			if(!var->is_global()){
+				continue;
+			}
+			for(auto p:read_counter){
+				if(var==p.first||var==p.first->get_collective()){
+					more=false;
+					break;
+				}
+			}
+			
+			if(more){
+				for(auto func: called){
+					for(auto p:func->global_counter){
+						if(var==p.first||var==p.first->get_collective()){
+							more=false;
+							break;
+						}
+					}
+					if(!more){
+						break;
+					}
+				}
+			}
+			
+			if(more){
+				printf("@");
+				ok=false;
+			}
+		}
+		
+	}
 
 	if (!ok && !is_compound(eType)) {
 		failed_stm = this;
@@ -843,7 +903,7 @@ Statement::contains_unfixed_goto(void) const
 }
 
 bool
-Statement::analyze_with_edges_in(vector<const Fact*>& inputs, CGContext& cg_context) const
+Statement::analyze_with_edges_in(vector<const Fact*>& inputs, CGContext& cg_context, bool fromPost) const
 {
 	FactMgr* fm = get_fact_mgr(&cg_context);
 	size_t i;
@@ -872,7 +932,7 @@ Statement::analyze_with_edges_in(vector<const Fact*>& inputs, CGContext& cg_cont
 			}
 		}
 	}
-	return validate_and_update_facts(inputs, cg_context);
+	return validate_and_update_facts(inputs, cg_context, fromPost);
 }
 
 /****************************************************************************

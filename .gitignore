@@ -68,6 +68,7 @@ checkRead/*test*
 
 # run log
 problem/
+patterns/
 
 # test dir
 test/*[!*.kb]
@@ -85,5 +86,9 @@ prob.txt
 oca.ml
 cnt.out
 
+tool.*
 
+# win dir
+msvc/*[!*.kb]
+msvc/*[!*.bat]
 

@@ -5,6 +5,7 @@
 
 use File::Find;
 use Cwd;
+# use Sort::Naturally;
 
 my $base;
 open my $file, "<", "base.out";
@@ -13,25 +14,53 @@ while(<$file>){
         $base=$_;
     }
 }
-my $dir = getcwd;
-print $dir;
+
 print "base", $base, "\n";
+
+my @files=();
+
 sub wanted{
     if($_ =~ m/\.c/){
         $_ =~ m/\d+/;
         
-        if($&==$base){
-            
+        if($&>=$base){
+            push @files, $_;
             $compiler="gcc-12.1";
-            if($_ =~ m/clang/){
-                $compiler="clang";
-            }elsif($_ =~ m/icc/){
-                $compiler="icc";
-            }
-            system("/home/csmith-2.3.0/reduce.kb $_ $compiler");
-            # system("./pl.pm output2.c $compiler");
-            # system("cp /home/csmith-2.3.0/test/full.c ../problem/$_ && cd ..");
+            # if($_ =~ m/clang/){
+            #     $compiler="clang";
+            # }elsif($_ =~ m/icc/){
+            #     $compiler="icc";
+            # }
+            # system("/home/csmith-2.3.0/reduce.kb $_ $compiler");
         }
     }
 }
+
 find(\&wanted, "./problem");
+
+
+# 1358
+
+@files = sort {
+    $a =~ m/\d+/;
+    my $anum = $&;
+    $b =~ m/\d+/;
+    my $bnum = $&;
+    $anum<=>$bnum;
+} @files;
+
+for(my $i=0; $i<=$#files; $i++) {
+    my $file=$files[$i];
+    $compiler="gcc-12.1";
+    if($file =~ m/clang/){
+        $compiler="clang";
+    }elsif($file =~ m/icc/){
+        $compiler="icc";
+    }
+
+    system("/home/csmith-2.3.0/reduce.kb $file $compiler");
+    
+    $file =~ m/\d+/;
+    my $cur_id = $&+1;
+    system("sed \"2c ${cur_id}\" -i base.out")
+}

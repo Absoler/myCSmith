@@ -188,7 +188,7 @@ OutputMgr::OutputMain(std::ostream &out)
 	out<<"getInfo(varInfos, global_cnt);"<<endl;	//transfer the address of varInfos to pintool
 	// send globals' read counter to pintool
 	Function::generate_setReadCnt(out);
-	out<<"	printf(\"%d\\n\",side);"<<endl;	//create side effect
+	
 
 	
 	// if (CGOptions::blind_check_global()) {
@@ -235,6 +235,7 @@ OutputMgr::OutputMain(std::ostream &out)
 	outputln(out);
 	VariableSelector::generate_setVarSide(out);
 	outputln(out);
+	out<<"	printf(\"%d\\n\",side);"<<endl;	//create side effect
 	ExtensionMgr::OutputTail(out);
 	out << "}" << endl;
 	delete invoke;

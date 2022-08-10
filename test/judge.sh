@@ -9,7 +9,7 @@
 #-----
 
 > full.c
-# cat /home/csmith-2.3.0/test/define.c >> full.c
+cat /home/csmith-2.3.0/test/define.c >> full.c
 cat target.c >> full.c
 cat /home/csmith-2.3.0/test/main.c >> full.c
 

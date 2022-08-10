@@ -226,10 +226,15 @@ Block::make_random(CGContext &cg_context, bool looping, int init, int test, int 
 			break;
 		b->stms.push_back(s);
 		// move temp counter from cg_context to s
-		s->read_counter=cg_context.get_current_func()->stm_read_Counter;
-		cg_context.get_current_func()->stm_read_Counter.clear();
-		s->call_counter=cg_context.get_current_func()->stm_call_Counter;
-		cg_context.get_current_func()->stm_call_Counter.clear();
+		if(s->eType!=eFor && s->eType!=eIfElse && s->eType!=eBlock){
+			s->read_counter=cg_context.get_current_func()->stm_read_Counter;
+			cg_context.get_current_func()->stm_read_Counter.clear();
+			s->call_counter=cg_context.get_current_func()->stm_call_Counter;
+			cg_context.get_current_func()->stm_call_Counter.clear();
+		}
+		b->merge_readCounter(s->read_counter);
+		b->merge_callCounter(s->call_counter);
+		
 		if (s->must_return()) {
 			break;
 		}
@@ -648,7 +653,7 @@ Block::contains_back_edge(void) const
  *    visit_one: when is true, the statements in this block must be visited at least once
  ****************************************************************************************************/
 bool
-Block::find_fixed_point(vector<const Fact*> inputs, vector<const Fact*>& post_facts, CGContext& cg_context, int& fail_index, bool visit_once) const
+Block::find_fixed_point(vector<const Fact*> inputs, vector<const Fact*>& post_facts, CGContext& cg_context, int& fail_index, bool visit_once, bool fromPost) const
 {
 	FactMgr* fm = get_fact_mgr(&cg_context);
 	// include outputs from all back edges leading to this block
@@ -688,7 +693,7 @@ Block::find_fixed_point(vector<const Fact*> inputs, vector<const Fact*>& post_fa
 			int h = g++;
 			if (h == 2585)
 				BREAK_NOP;		// for debugging
-			if (!stms[i]->analyze_with_edges_in(outputs, cg_context)) {
+			if (!stms[i]->analyze_with_edges_in(outputs, cg_context, fromPost)) {
 				fail_index = i;
 				return false;
 			}
@@ -845,7 +850,7 @@ Block::post_creation_analysis(CGContext& cg_context, const Effect& pre_effect)
 		vector<const Fact*> facts_copy = fm->map_facts_in[this];
 		// reset the accumulative effect
 		cg_context.reset_effect_accum(pre_effect);
-		while (!find_fixed_point(facts_copy, post_facts, cg_context, index, need_revisit)) {
+		while (!find_fixed_point(facts_copy, post_facts, cg_context, index, need_revisit, true)) {
 			size_t i, len;
 			len = stms.size();
 			for (i=index; i<len; i++) {

@@ -85,7 +85,9 @@ Fact::abstract_fact_for_return(const std::vector<const Fact*>& facts, const Expr
 	Lhs lhs(*func->rv);
 	return abstract_fact_for_assign(facts, &lhs, expr);
 }
-
+/*
+    考虑到变量的初始化赋值后得到的facts
+*/
 vector<const Fact*>
 Fact::abstract_fact_for_var_init(const Variable* v)
 {

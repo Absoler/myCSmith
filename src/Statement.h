@@ -67,6 +67,9 @@ class StatementGoto;
 class Variable;
 class Expression;
 
+typedef map<const Variable*, int> ReadCounter;
+typedef map<pair<const Function*, const Function*>, int> CallCounter;
+
 enum eStatementType
 {
 	eAssign,
@@ -107,13 +110,13 @@ public:
 
 	void output_hash(std::ostream &out, int indent) const;
 
-	bool stm_visit_facts(vector<const Fact*>& inputs, CGContext& cg_context) const;
+	bool stm_visit_facts(vector<const Fact*>& inputs, CGContext& cg_context, bool fromPost=false) const;
 
-	bool validate_and_update_facts(vector<const Fact*>& inputs, CGContext& cg_context) const;
+	bool validate_and_update_facts(vector<const Fact*>& inputs, CGContext& cg_context, bool fromPost=false) const;
 
 	int shortcut_analysis(vector<const Fact*>& inputs, CGContext& cg_context) const;
 
-	bool analyze_with_edges_in(vector<const Fact*>& inputs, CGContext& cg_context) const;
+	bool analyze_with_edges_in(vector<const Fact*>& inputs, CGContext& cg_context, bool fromPost = false) const;
 
 	int find_typed_stmts(vector<const Statement*>& stms, const vector<int>& stmt_types) const;
 
@@ -177,7 +180,8 @@ public:
 	static int get_current_sid(void) { return sid; }
 
 	int get_blk_depth(void) const;
-
+	bool merge_readCounter(ReadCounter& counter);
+	void merge_callCounter(CallCounter& counter);
 	// unique id for each statement
 	int stm_id;
 	Function* func;
@@ -186,8 +190,8 @@ public:
 
 	static ProbabilityTable<unsigned int, ProbName> *stmtTable_;
 
-	map<const Variable*, int> read_counter;	// record read times in this statement
-	map<pair<const Function*, const Function*>, int> call_counter;	// record call-edge in this statement
+	ReadCounter read_counter;	// record read times in this statement
+	CallCounter call_counter;	// record call-edge in this statement
 protected:
 	Statement(eStatementType st, Block* parent);
 

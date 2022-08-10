@@ -48,7 +48,8 @@ using namespace std;
  * The empty effect.
  */
 const Effect Effect::empty_effect;
-
+Effect Effect::all_effect;
+bool Effect::is_revisit = false;
 ///////////////////////////////////////////////////////////////////////////////
 
 /*

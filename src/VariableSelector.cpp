@@ -1107,6 +1107,9 @@ VariableSelector::create_and_initialize(Effect::Access access, const CGContext &
         var = new_variable(name, t, init, qfer);
     }
     assert(var);
+    if(var->name=="l_457"){
+        printf("3");
+    }
     return var;
 }
 
