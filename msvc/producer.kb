@@ -3,7 +3,7 @@
 #   循环检查缓冲区中的待测文件是否全部被取走使用，如果是则再生成一批
 #   args[0]是循环轮数
 #   ------------
-buffer_len=10   # csmith一次性生成的待测文件数量
+buffer_len=15000   # csmith一次性生成的待测文件数量
 period=1    # 检查间隔/us
 
 if [ $# -lt 1 ] ; then
@@ -32,4 +32,5 @@ do
     #     sleep ${period}
     #     read flag < flag.txt
     # done
+    break
 done

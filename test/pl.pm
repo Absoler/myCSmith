@@ -66,11 +66,11 @@ close file;
 my $stat;
 
 if($compiler =~ m/gcc/){
-    $stat = system("creduce ./judge_gcc.kb target.c");
+    $stat = system("creduce --tidy --n 6 ./judge_gcc.kb target.c");
 }elsif($compiler =~ m/clang/){
-    $stat = system("creduce ./judge_clang.kb target.c");
+    $stat = system("creduce --tidy --n 6 ./judge_clang.kb target.c");
 }elsif($compiler =~ m/icc/){
-    $stat = system("creduce ./judge_icc.kb target.c");
+    $stat = system("creduce --tidy --n 6 ./judge_icc.kb target.c");
 }
 exit $stat;
 # system("creduce `./judge.sh @{[$compiler]}` target.c");

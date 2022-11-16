@@ -23,7 +23,7 @@ using std::pair;
 string targetFuncPrefix;
 FILE* outfile;
 FILE* resfile;
-FILE* cntfile;
+FILE* descriptFile;
 bool fail=false;
 
 struct Var{	//record a var
@@ -208,6 +208,9 @@ map<Read, bool> isForVars;    // record whether a read is forVar, maybe not nece
 map<Read, bool> isGlobals;    // record whether a read located in global, not necessary too.
 
 map<ADDRINT, string> disasMap;  // store instruction text
+map<ADDRINT, string> funcMap;   // store funcName inst belongs
+map<ADDRINT, pair<int, int>> locMap;    // store src location the inst belongs
+map<ADDRINT, string> typeMap;   // store inst's mnemonic
 
 inline int getInd(const Read& read){
     Var tmp = {read.first, read.second, ""};
@@ -278,9 +281,16 @@ VOID hack_targetFunc(RTN rtn, VOID* v){
     RTN_Open(rtn);
     string funcName = RTN_Name(rtn);
     if (funcName.find(targetFuncPrefix) !=  funcName.npos) {
+        printf(" %s\n", funcName.c_str());
         for (INS ins = RTN_InsHead(rtn); INS_Valid(ins); ins = INS_Next(ins)){
             if (INS_IsMemoryRead(ins)){
                 disasMap[INS_Address(ins)] = INS_Disassemble(ins);
+                funcMap[INS_Address(ins)] = RTN_Name(rtn);
+                typeMap[INS_Address(ins)] = INS_Mnemonic(ins);
+                int row,col;
+                PIN_GetSourceLocation(INS_Address(ins), &col, &row, NULL);
+                // printf("read at %d:%d   0x%lx:%s\n", row, col, INS_Address(ins), INS_Disassemble(ins).c_str());
+                locMap[INS_Address(ins)]=pair<int,int>(row, col);
                 INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)record_Read, IARG_INST_PTR, IARG_MEMORYREAD_EA, IARG_MEMORYREAD_SIZE, IARG_END);
             }
         }    
@@ -292,7 +302,6 @@ VOID hack_targetFunc(RTN rtn, VOID* v){
 VOID Fini(INT32 code, VOID* val){
     printf("nothing at start of fini\n");
     print_globals(outfile);
-
     // build relations between global vars and global reads
     for(auto p:actual_counter){
         Read read=p.first;
@@ -309,7 +318,9 @@ VOID Fini(INT32 code, VOID* val){
         expect_clusters[id].insert(read);
     }
 
+    int row, col;
     fprintf(outfile,"\n\nproblem of too many reads:\n");
+    fprintf(descriptFile, "more\n");
     for(int id=0;id<cnt_globals;id++){
         if(actual_clusters[id].size()>0){
             for(Read read:actual_clusters[id]){
@@ -327,12 +338,18 @@ VOID Fini(INT32 code, VOID* val){
                     expect_cnt+=expect_counter[read];
                 }
                 if(actual_cnt>expect_cnt){
-                    fprintf(cntfile, "%s    %d\n", globals[varOfRead[read]].name, actual_cnt);
+                    
                     fprintf(outfile, "%s: start at 0x%lx of len = %d\n", globals[varOfRead[read]].name, read.first, read.second);
                     fprintf(outfile, "expected %d but read %d\n", expect_cnt, actual_cnt);
                     fprintf(outfile, "insts of main read:\n");
+                    fprintf(descriptFile, "var\n");
+                    fprintf(descriptFile, "%s %d\n", globals[varOfRead[read]].name, read.second);
+                    fprintf(descriptFile, "%d %d\n", expect_cnt, actual_cnt);
                     for(ADDRINT ip: instOfRead[read]){
-                        fprintf(outfile, "  %lx  %s\n", ip, disasMap[ip].c_str());
+                        row=locMap[ip].first;
+                        col=locMap[ip].second;
+                        fprintf(outfile, "  %s:%d:%d  %lx  %s\n", funcMap[ip].c_str(), row, col, ip, disasMap[ip].c_str());
+                        fprintf(descriptFile, "%s\n", typeMap[ip].c_str());
                     }
                     fprintf(outfile,"insts of other reads\n");
                     for(Read otherRead:actual_set){
@@ -341,10 +358,14 @@ VOID Fini(INT32 code, VOID* val){
                         }
                         fprintf(outfile, "  start at 0x%lx of len = %d\n", otherRead.first, otherRead.second);
                         for(ADDRINT ip: instOfRead[otherRead]){
-                            fprintf(outfile, "  %lx  %s\n", ip, disasMap[ip].c_str());
+                            row=locMap[ip].first;
+                            col=locMap[ip].second;
+                            fprintf(outfile, "  %s:%d:%d  %lx  %s\n", funcMap[ip].c_str(), row, col, ip, disasMap[ip].c_str());
+                            fprintf(descriptFile, "%s\n", typeMap[ip].c_str());
                         }
                         fprintf(outfile, "\n");
                     }
+                    fprintf(descriptFile, "done\n");
                     fprintf(outfile, "\n");
                     fail=true;
                 }
@@ -354,13 +375,21 @@ VOID Fini(INT32 code, VOID* val){
     
     
     fprintf(outfile, "problem of unexpected reads\n");
+    fprintf(descriptFile, "unexpected\n");
     for(Read read: unexpectedReads){
+        fprintf(descriptFile, "var\n");
         fprintf(outfile, "%s: start at 0x%lx of len = %d\n", globals[varOfRead[read]].name, read.first, read.second);
+        fprintf(descriptFile, "%s %d\n", globals[varOfRead[read]].name, read.second);
+        fprintf(descriptFile, "0 -1\n");    // for unexpected cases, assign actual to -1
         for(ADDRINT addr:instOfRead[read]){
-            fprintf(outfile, "  %s\n", disasMap[addr].c_str());
+            row=locMap[addr].first;
+            col=locMap[addr].second;
+            fprintf(outfile, "  %s:%d:%d  %lx  %s\n", funcMap[addr].c_str(), row, col, addr, disasMap[addr].c_str());
+            fprintf(descriptFile, "%s\n", typeMap[addr].c_str());
         }
         fprintf(outfile, "\n");
-        fail=true;
+        fprintf(descriptFile, "done\n");
+        // fail=true;
     }
     
     fprintf(resfile,(fail?"1":"0"));
@@ -382,7 +411,7 @@ int main(int argc, char* argv[]){
     PIN_InitSymbols();
     outfile=fopen("checkRead.out", "w");
     resfile=fopen("result.out", "w");
-    cntfile=fopen("cnt.out", "w");
+    descriptFile=fopen("descript.out", "w");
     if(PIN_Init(argc, argv)) return Usage();
 
     RTN_AddInstrumentFunction(hack_getInfo, 0);
@@ -395,7 +424,7 @@ int main(int argc, char* argv[]){
     
     fclose(outfile);
     fclose(resfile);
-    fclose(cntfile);
+    fclose(descriptFile);
     
     return 0;
 }

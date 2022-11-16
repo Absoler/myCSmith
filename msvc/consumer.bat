@@ -1,7 +1,7 @@
 setlocal enabledelayedexpansion
 @echo off
 set /p base=<base.txt
-set buffer_len=3
+set buffer_len=15000
 for /f %%i in ('dir buffer /b ^|find /c ^"output^" ') do set len=%%i
 :start
 echo %len%
@@ -11,17 +11,21 @@ if %len% GEQ 1 (
         echo %%f
         set objfile=%%f
         echo !objfile:.c=.obj!
-        cl buffer\%%f  /w /Zi /link /out:output.exe
+        cl buffer\%%f  /w /O2 /Zi /link /out:output.exe
         ..\..\pin-3.21-98484-ge7cd811fd-msvc-windows\pin.exe -t ..\..\pin-3.21-98484-ge7cd811fd-msvc-windows\source\tools\MyPinTool\Release\MyPinTool.dll -- .\output.exe func_
+        echo now check
         set /p res=<result.txt
-        if %res%==1 (
-            copy buffer\%%f problem\output%base%.c
-            copy checkRead.txt problem\checkRead%base%.txt
+        echo res !res!
+        if !res!==1 (
+            echo buffer\%%f
+            copy buffer\%%f o2\!base!_output.c
+            copy checkRead.txt o2\!base!_checkRead.txt
             set /a base+=1
-            echo %base% > base.txt
+            echo !base!> base.txt
         )
         @REM del buffer\%%f
         del !objfile:.c=.obj!
+        del output.*
         echo.
         echo.
     )

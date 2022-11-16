@@ -23,9 +23,9 @@ sub wanted{
     if($_ =~ m/\.c/){
         $_ =~ m/\d+/;
         
-        if($&>=$base){
+        if($&>=$base){     # 3942 3971  3997
             push @files, $_;
-            $compiler="gcc-12.1";
+            # $compiler="gcc-12.1";
             # if($_ =~ m/clang/){
             #     $compiler="clang";
             # }elsif($_ =~ m/icc/){
@@ -39,7 +39,7 @@ sub wanted{
 find(\&wanted, "./problem");
 
 
-# 1358
+
 
 @files = sort {
     $a =~ m/\d+/;
@@ -57,7 +57,7 @@ for(my $i=0; $i<=$#files; $i++) {
     }elsif($file =~ m/icc/){
         $compiler="icc";
     }
-
+    
     system("/home/csmith-2.3.0/reduce.kb $file $compiler");
     
     $file =~ m/\d+/;

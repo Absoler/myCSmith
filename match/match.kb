@@ -1,0 +1,103 @@
+#! /bin/bash
+gcc_checks=(
+    /home/patcher/TestPatterns/arg_gcc/Assign_with_logic.cocci
+    /home/patcher/TestPatterns/arg_gcc/assignExprAsArg.cocci
+    /home/patcher/TestPatterns/arithmetic_gcc/div.cocci
+    /home/patcher/TestPatterns/delayAssign_gcc/simpleReturn.cocci
+    /home/patcher/TestPatterns/delayAssign_gcc/struct_assign_and_if.cocci
+    /home/patcher/TestPatterns/delayAssign_gcc/struct_useAfterAssign.cocci
+    /home/patcher/TestPatterns/delayAssign_gcc/union_assignExpr_arg.cocci
+    /home/patcher/TestPatterns/ifMultiCmp_gcc/assign_struct_and_use.cocci
+    /home/patcher/TestPatterns/ifMultiCmp_gcc/both_storeAndUse.cocci
+    /home/patcher/TestPatterns/ifMultiCmp_gcc/compound_assign.cocci
+    /home/patcher/TestPatterns/ifMultiCmp_gcc/decl_union_return.cocci
+    /home/patcher/TestPatterns/ifMultiCmp_gcc/one_assign_and_other.cocci
+    /home/patcher/TestPatterns/ifMultiCmp_gcc/one_assign_and_return.cocci
+    /home/patcher/TestPatterns/ifMultiCmp_gcc/separate_storeAndUse.cocci
+    /home/patcher/TestPatterns/ifMultiCmp_gcc/two_assign_and_return.cocci
+    /home/patcher/TestPatterns/ifRefresh_gcc/parm_deref_assign.cocci
+    /home/patcher/TestPatterns/ifRefresh_gcc/union_assign.cocci
+    /home/patcher/TestPatterns/return_gcc/load_retVal_inAdvance.cocci
+    /home/patcher/TestPatterns/structArg_gcc/structArg.cocci
+    /home/patcher/TestPatterns/structDup_gcc/assign_and_use.cocci
+    /home/patcher/TestPatterns/structDup_gcc/consecutive_assign.cocci 
+)
+icc_checks=(
+    arithmetic_icc.cocci 
+    delayAssign_icc.cocci 
+)
+
+test_checks=(
+    one_assign_and_return.cocci
+)
+
+> matched.out
+> unmatched.out
+> timeout.out
+
+files=(`ls ../patterns/ | grep "\.c"`)
+boring=(`cat boring | sed 's/[^0-9]//g'`)
+# files=(`cat ../tmp/unreduce`)
+matched=()
+unmatched=()
+sum=${#files[*]}
+for file in ${files[*]} ; do
+# file=2677_gcc-12.1_output.c
+    echo $file
+    num=${file%%_*}
+    if [[ ${boring[*]} =~ $num ]] ; then
+        continue
+    fi
+
+    ./judgeC.kb ../patterns/$file
+    if [ $? -ne 0 ] ; then 
+        continue
+    fi
+
+    if [[ $file =~ "gcc" ]] ; then
+        match=0
+        for check in ${gcc_checks[*]} ; do
+            echo \>check $check
+            res=`timeout 2s spatch -sp_file $check ../patterns/$file -o tmp.c --no-includes`
+            if [ $? -eq 124 ] ; then
+                echo $check $file >> timeout.out
+            fi
+            if [ -n "$res" ] ; then
+                echo $check $file >> matched.out
+                match=1
+            fi
+        done
+        if [ $match -eq 0 ] ; then
+            unmatched[${#unmatched[*]}]=$file
+            echo $file >> unmatched.out
+        else
+            matched[${#matched[*]}]=$file
+        fi
+    fi
+    
+    if [[ $file =~ "icc" ]] ; then
+        continue
+        match=0
+        for check in ${icc_checks[*]} ; do
+            echo \>check $check
+            res=`timeout 2s spatch -sp_file $check ../patterns/$file -o tmp.c `
+            if [ $? -eq 124 ] ; then
+                echo $check $file >> timeout.out
+            fi
+            if [ -n "$res" ] ; then
+                matched[${#matched[*]}]=$file
+                echo $check $file >> matched.out
+                match=1
+            fi
+        done
+        if [ $match -eq 0 ] ; then
+            unmatched[${#unmatched[*]}]=$file
+            echo $file >> unmatched.out
+        else
+            matched[${#matched[*]}]=$file
+        fi
+    fi
+done
+
+echo matched ${#matched[*]} / $sum
+echo matched ${#matched[*]} / $sum >> matched.out

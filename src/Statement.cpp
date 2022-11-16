@@ -654,7 +654,7 @@ Statement::stm_visit_facts(vector<const Fact*>& inputs, CGContext& cg_context, b
 	//int h = g++;
 	bool ok = visit_facts(inputs, cg_context);
 
-	if(fromPost){
+	if(1){
 		bool more=true;
 		Effect new_eff = cg_context.get_effect_stm();
 		VariableSet read_vars = new_eff.get_read_vars();

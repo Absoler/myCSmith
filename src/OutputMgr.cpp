@@ -109,7 +109,7 @@ OutputMgr::~OutputMgr()
 // }
 void 
 OutputMgr::Output_getInfoFunc(std::ostream &out){
-	out<<"void getInfo(unsigned long addr, int cnt){"<<endl;
+	out<<"void __attribute__ ((noinline)) getInfo(unsigned long addr, int cnt){"<<endl;
 	out<<"    side=(side+(addr+cnt)%1000)%1000;"<<endl;
 	out<<"}"<<endl;
 }
@@ -129,17 +129,18 @@ OutputMgr::Output_extraVariables(std::ostream &out){
 
 void
 OutputMgr::Output_setInfoFunc(std::ostream &out){
-	out<<"void setInfo(unsigned long addr, unsigned int size, char* name){"<<endl;
+	out<<"void __attribute__ ((noinline)) setInfo(unsigned long addr, unsigned int size, char* name){"<<endl;
 	out<<"	varInfos[global_cnt].addr=addr;"<<endl;
     out<<"	varInfos[global_cnt].size=size;"<<endl;
 	out<<"	strcpy(varInfos[global_cnt].name,name);"<<endl;
     out<<"	global_cnt++;"<<endl;
+    out<<"  side=(side+size)%1000;"<<endl;
     out<<"}"<<endl;
 }
 
 void 
 OutputMgr::Output_setReadCntFunc(std::ostream &out){
-	out<<"void setReadCnt(unsigned long addr, unsigned int length, int cnt){"<<endl;
+	out<<"void __attribute__ ((noinline)) setReadCnt(unsigned long addr, unsigned int length, int cnt){"<<endl;
     out<<"side=(side+(addr+length+cnt)%1000)%1000;"<<endl;
 	out<<"}"<<endl;
 }

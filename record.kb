@@ -10,4 +10,5 @@ cnt=$2
 
 cp checkRead.out problem/${cnt}_${compiler}_checkRead.out
 cp runtime/output2.c problem/${cnt}_${compiler}_output.c
+cp descript.out problem/${cnt}_${compiler}_descript.out
 objdump -d runtime/output2 > problem/${cnt}_${compiler}_output.asm

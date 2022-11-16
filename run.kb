@@ -9,7 +9,12 @@
 #-----
 
 # 1665 for start
-
+# 1902 O0 => 2049
+# 2049 back to O1
+# no problem in O3 for 20000 tests
+# 2433 try to strengthen restrictions ( rm 'fromPost' in stm_visit_facts)
+# 3971 start O2
+# 4200 block unexpect check in pintool for O2
 if [ $# -ge 1 ]; then
     limit=$1
 else
@@ -29,7 +34,7 @@ do
     build/src/csmith --no-safe-math --no-bitfields --no-volatiles --probability-configuration ./prob.txt  -o runtime/output2.c 1>/dev/null
     fail=0  # fail flag
     for compiler in ${compilers[*]} ; do
-        $compiler runtime/output2.c -g -w -O1 -o runtime/output2
+        $compiler runtime/output2.c -g -w -O2 -o runtime/output2
         if [ $? -gt 0 ] ; then
             echo $compiler compilation error
         fi 

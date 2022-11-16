@@ -1,0 +1,11 @@
+#! /bin/bash
+if [ $# -ge 1 ]; then
+    file=$1
+else
+    file=../test/output2.c
+fi
+spatch --parse-c $file 2>tmp 1>/dev/null
+s=`cat tmp | grep "function with no return type"`
+if [ -n "$s" ] ; then 
+    exit 1
+fi
