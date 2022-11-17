@@ -17,6 +17,7 @@ while(<$file>){
 
 print "base", $base, "\n";
 
+my $cwd = getcwd;
 my @files=();
 
 sub wanted{
@@ -25,20 +26,11 @@ sub wanted{
         
         if($&>=$base){     # 3942 3971  3997
             push @files, $_;
-            # $compiler="gcc-12.1";
-            # if($_ =~ m/clang/){
-            #     $compiler="clang";
-            # }elsif($_ =~ m/icc/){
-            #     $compiler="icc";
-            # }
-            # system("/home/csmith-2.3.0/reduce.kb $_ $compiler");
         }
     }
 }
 
-find(\&wanted, "./problem");
-
-
+find(\&wanted, "$cwd/problem");
 
 
 @files = sort {
@@ -58,7 +50,7 @@ for(my $i=0; $i<=$#files; $i++) {
         $compiler="icc";
     }
     
-    system("/home/csmith-2.3.0/reduce.kb $file $compiler");
+    system("$cwd/reduce.kb $file $compiler");
     
     $file =~ m/\d+/;
     my $cur_id = $&+1;

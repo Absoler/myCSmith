@@ -1,8 +1,9 @@
 #! /bin/bash
-cd /home/csmith-2.3.0
+root_dir=/home/csmith_store
+cd $root_dir
 cp problem/$1 test/reduce.c 
 file=$1
-# echo ${file%_*}_checkRead.out
+
 cp problem/${file%_*}_checkRead.out test/checkRead.old
 cp problem/${file%_*}_descript.out test/descript.old
 cd test

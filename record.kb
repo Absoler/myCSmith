@@ -1,4 +1,7 @@
 #! /bin/bash
+
+# make sure ./problem dir is created
+
 compiler=""
 if [ $# -lt 2 ]; then
     echo args not enough

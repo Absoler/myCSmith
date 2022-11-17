@@ -1,0 +1,10 @@
+#! /bin/bash
+
+# init project
+
+# replace var `root_dir` with current working directory
+kb_scripts=(`find ./ -name "*.kb"`)
+for file in ${kb_scripts[*]} ; do
+    chmod +x $file
+    sed "s%^\(root_dir=\).*%\1`pwd`%" $file -i.bak
+done

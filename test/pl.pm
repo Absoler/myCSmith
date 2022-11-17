@@ -73,4 +73,3 @@ if($compiler =~ m/gcc/){
     $stat = system("creduce --tidy --n 6 ./judge_icc.kb target.c");
 }
 exit $stat;
-# system("creduce `./judge.sh @{[$compiler]}` target.c");

@@ -71,22 +71,16 @@ problem/
 patterns/
 
 # test dir
-test/*[!*.kb]
-
+!test/*.kb
+!test/*.py
 # scripts
 
 
-# prob file
-prob.txt
 
 # log or out
 *.log
 *.out
 
-oca.ml
-cnt.out
-
-tool.*
 
 # win dir
 msvc/*[!*.kb]

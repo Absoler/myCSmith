@@ -46,6 +46,7 @@ do
         read line < ./result.out
         if [ $line == 1 ] ; then
             fail=1
+            echo ./record.kb ${compiler} $[ base + fail_cnt ]
             ./record.kb ${compiler} $[ base + fail_cnt ]
             echo $compiler fail
         fi    
