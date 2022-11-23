@@ -476,7 +476,7 @@ Variable::Variable(const std::string &name, const Type *type,
 	  isAuto(isAuto), isStatic(isStatic), isRegister(isRegister),
 	  isBitfield_(isBitfield), isAddrTaken(false), isAccessOnce(false),
 	  field_var_of(isFieldVarOf), isArray(false),
-	  qfer(isConsts, isVolatiles), loaded(false), field_taken(false)
+	  qfer(isConsts, isVolatiles), used(false), field_used(false)
 {
 	// nothing else to do
 }
@@ -490,7 +490,7 @@ Variable::Variable(const std::string &name, const Type *type, const Expression *
 	  isAuto(false), isStatic(false), isRegister(false), isBitfield_(false),
 	  isAddrTaken(false), isAccessOnce(false),
 	  field_var_of(0), isArray(false),
-	  qfer(*qfer), loaded(false), field_taken(false)
+	  qfer(*qfer), used(false), field_used(false)
 {
 	// nothing else to do
 }
@@ -502,7 +502,7 @@ Variable::Variable(const std::string &name, const Type *type, const Expression *
 	  isAddrTaken(false), isAccessOnce(false),
 	  field_var_of(isFieldVarOf),
 	  isArray(isArray),
-	  qfer(*qfer), loaded(false), field_taken(false)
+	  qfer(*qfer), used(false), field_used(false)
 {
 	// nothing else to do
 }

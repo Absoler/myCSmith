@@ -55,12 +55,12 @@ runtime/output2
 temp.*
 
 # extra files from pintool
-checkRead.out
+checkAccess.out
 result.out
 timeout.out
-checkRead/*test*
+checkAccess/*test*
 
-# created by notepad++
+# back file
 *.bak
 
 #pin log

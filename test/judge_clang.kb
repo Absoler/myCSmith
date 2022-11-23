@@ -8,34 +8,38 @@
 #
 #-----
 
-> full.c
-# root_dir must be assigned with project's root directory
 root_dir=/home/csmith_store
+opt_option=-O2
+pin_root=/home/pin-3.21-98484-ge7cd811fd-gcc-linux/
+
+> full.c
+
 cat $root_dir/test/define.c >> full.c
 cat target.c >> full.c
 cat $root_dir/test/main.c >> full.c
 
 compiler=clang
 
-$compiler full.c -g -O1 -o full >/dev/null 2>info
+$compiler full.c -g $opt_option -o full >/dev/null 2>info
 compile_stat=$?
 if [ $compile_stat -ne 0 ]; then
     # echo "fail due to compilation error: " $compile_stat >> $root_dir/reduce.log
     exit 1
 fi
 
+# avoid loss of return type, which lead to failure of coccinelle's analysis
 s=`cat info | grep "return type defaults to"`
 if [ -n "$s" ] ; then
     exit 1
 fi
 
-timeout -s SIGTERM 5s $root_dir/../pin-3.21-98484-ge7cd811fd-gcc-linux/pin -t $root_dir/checkRead/obj-intel64/checkRead.so -- ./full func 1>/dev/null 1>&2
+timeout -s SIGTERM 5s $pin_root/pin -t $root_dir/checkAccess/obj-intel64/checkAccess.so -- ./full func 1>/dev/null 1>&2
 run_stat=$?
 if [ $run_stat -ne 0 ]; then
     # echo "runtime problem maybe " $run_stat >> $root_dir/reduce.log
     exit 1
 fi
-# awk -F ' ' '/g_[0-9]+:/{print $1}' checkRead.out > vars.out
+# awk -F ' ' '/g_[0-9]+:/{print $1}' checkAccess.out > vars.out
 # diff vars.out $root_dir/test/vars.out
 $root_dir/test/compare.py ./descript.out $root_dir/test/descript.old
 if [ $? -ne 0 ] ; then

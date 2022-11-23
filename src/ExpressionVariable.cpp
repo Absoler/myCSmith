@@ -55,9 +55,9 @@
  *
  */
 ExpressionVariable *
-ExpressionVariable::make_random(CGContext &cg_context, const Type* type, const CVQualifiers* qfer, bool as_param, bool as_return, map<int,int> *read_counter)
+ExpressionVariable::make_random(CGContext &cg_context, const Type* type, const CVQualifiers* qfer, bool as_param, bool as_return, map<int,int> *use_counter)
 {
-	// read_counter belong to the func which choose this var as arg
+	// use_counter belong to the func which chooses this current var as an arg
 	DEPTH_GUARD_BY_TYPE_RETURN(dtExpressionVariable, NULL);
 	Function *curr_func = cg_context.get_current_func();
 	FactMgr* fm = get_fact_mgr_for_func(curr_func);
@@ -105,42 +105,38 @@ ExpressionVariable::make_random(CGContext &cg_context, const Type* type, const C
 		if(var->name=="g_103"&&as_param){
 			printf("1");
 		}
-		// if this var will be an arg, check whether it contain global that will be read in target function (with the same deref-level) 
-		VariableSet globals_in_param;	// these vars will be read if this var is qualified for arg
-		if(as_param && read_counter!=NULL && valid){
+		// if this var will be an arg, check whether it contain global that will be read/written in target function (with the same deref-level) 
+		VariableSet used_globals_in_param;	// these vars will be read/written if this var is qualified for an arg
+		if(as_param && use_counter!=NULL && valid){
+            //  read-test and write-test share the same check process
 			int indirect=var->type->get_indirect_level() - type->get_indirect_level();
 			int end_level=var->type->get_indirect_level();
-			// if(indirect==-1){
-			// 	printf("-1 %s\n",var->name.c_str());
-			// 	if(var->is_global() && read_counter->find(1)!=read_counter->end()){
-			// 		if(read_counter->at(1)>1 || read_counter->at(1)==1&&VariableSelector::check_var_loaded(var)){
-			// 			valid=false;
-			// 		}else{
-			// 			if(read_counter->at(1)==1){
-			// 				globals_in_param.push_back(var);
-			// 			}
-			// 		}
-			// 	}
-			// }else{
-				map<int, VariableSet> vars=FactPointTo::get_pointees_in_range(var, fm->global_facts, indirect, end_level);
-				for(int i=1;i<=end_level&&valid; i++){
-					if(read_counter->find(i)==read_counter->end()){
-						//接下来的解引用不会在函数中被访问
-						break;
-					}
-					for(const Variable* v:vars[i]){
-						if(v->is_global()){
-							if((*read_counter)[i]>1 || ((*read_counter)[i]==1&&VariableSelector::check_var_loaded(v))){	//read more than once in the func or read once and it's already used
-								valid=false;
-								break;
-							}else{
-								if((*read_counter)[i]==1)
-									globals_in_param.push_back(v);
-							}
-						}
-					}
-				}
-			// }
+			
+            // if(CGOptions::test_introduce_store()){
+                
+            // }else{
+
+                map<int, VariableSet> varsMap=FactPointTo::get_pointees_in_range(var, fm->global_facts, indirect, end_level);
+                for(int i=1; i<=end_level&&valid; i++){
+                    if(use_counter->find(i)==use_counter->end()){
+                        //接下来的解引用不会在函数中被访问
+                        break;
+                    }
+                    assert(i<=end_level-indirect);  // 如果没问题，把上面的循环上界改成它
+                    for(const Variable* v:varsMap[i]){
+                        if(v->is_global()){
+                            if((*use_counter)[i]>1 || ((*use_counter)[i]==1&&VariableSelector::check_var_used(v))){	//read/write more than once in the func or once and it's already used
+                                valid=false;
+                                break;
+                            }else{
+                                if((*use_counter)[i]==1)
+                                    used_globals_in_param.push_back(v);
+                            }
+                        }
+                    }
+                }
+            // }
+
 		}
 		
 		if (valid) {
@@ -148,54 +144,50 @@ ExpressionVariable::make_random(CGContext &cg_context, const Type* type, const C
 			if (tmp.visit_facts(fm->global_facts, cg_context)) {
 				ev = tmp.get_indirect_level() == 0 ? new ExpressionVariable(*var) : new ExpressionVariable(*var, type);
 				bool get=false;
-				if(var->name=="g_1343.f3.f1"){ 
-					get=true;
-						printf("ev get g_1343.f3.f1\n");
+				if (var->name=="g_1343.f3.f1") { 
+					get = true;
 				}
-				int indirect=tmp.get_indirect_level();
+				int indirect = tmp.get_indirect_level();
 				cg_context.curr_blk = cg_context.get_current_block();
-				// if(indirect>0&&!var->is_global()){
-				// 	printf("%d\n",tmp.get_indirect_level());
-				// }
+
 				if(var->is_argument()&&indirect>0)
 					printf("3");
-				map<int, VariableSet> targets=FactPointTo::get_pointees_under_level(var,indirect,fm->global_facts);
-				
-				for(int i=0; i<=indirect; i++){
-					for(const Variable* var:targets[i]){
-						if(var->is_argument()){
-							VariableSelector::record_paramUse(var, cg_context, indirect-i, as_return);
-						}
-						if(get&&var->name=="g_1343.f3.f1"){
-							printf("will set_used\n");
-						}
-						VariableSelector::set_used(var, cg_context, as_return);
-					}
-				}
-				// var is selected as arg and these globals will be deref-ed and read in function
-				if(globals_in_param.size()>0)
-					printf("in %s\n",var->name.c_str());
-				for(const Variable* v:globals_in_param){
-					printf("will read %s\n", v->name.c_str());
-					VariableSelector::set_used(v, cg_context);	//如果以后允许参数执行次数大于一次，这里set_used记录次数时要记录那个次数
-				}
-                // VariableSelector::set_used(var);    //zkb
-				//set state for dereference
-				// vector<const Variable*> tmp;
-				// tmp=FactPointTo::merge_pointees_of_pointer(var,indirection,fm->global_facts);
-				// for(const Variable* var:tmp){
-				// 	VariableSelector::set_used(var);
-				// }
-				// if(tmp.size()>1){
-				// 	printf("3"); //seems impossible, so don't need codes above
-				// }
+                
+                if(CGOptions::test_introduce_store()){
+                    // for store-test, only need restriction on arg, (check whether dereferences this arg will be written in callee)
+                    for(const Variable* v:used_globals_in_param){
+                        VariableSelector::set_used(v, cg_context);
+                    }
+                }else{
 
-                if(ev->get_indirect_level()!=0){
-                    // printf("%d %s\n",ev->get_indirect_level(),ev->get_var()->get_actual_name().c_str());
+                    map<int, VariableSet> targets=FactPointTo::get_pointees_under_level(var,indirect,fm->global_facts);
+                    
+                    for(int i=0; i<=indirect; i++){
+                        for(const Variable* var:targets[i]){
+                            if(var->is_argument()){
+                                VariableSelector::record_paramRead(var, cg_context, indirect-i, as_return); //这个地方添加次数可能过多导致可以用的参数也不能用了
+                            }
+                            if(get&&var->name=="g_1343.f3.f1"){
+                                printf("will set_used\n");
+                            }
+                            VariableSelector::set_used(var, cg_context, as_return);
+                        }
+                    }
+                    // var is selected as arg and these globals will be deref-ed and read in function
+                    // if(used_globals_in_param.size()>0)
+                    // 	printf("in %s\n",var->name.c_str());
+                    for(const Variable* v:used_globals_in_param){
+                        // printf("will read %s\n", v->name.c_str());
+                        VariableSelector::set_used(v, cg_context);	//如果以后允许参数执行次数大于一次，这里set_used记录次数时要记录那个次数
+                    }
+
+                    if(ev->get_indirect_level()!=0){
+                        // printf("%d %s\n",ev->get_indirect_level(),ev->get_var()->get_actual_name().c_str());
+                    }
                 }
-				break;  //success
-			}
-			else {
+                break;  //success
+                
+			}else {
 				cg_context.reset_effect_accum(eff_accum);
 				cg_context.reset_effect_stm(eff_stmt);
 			}

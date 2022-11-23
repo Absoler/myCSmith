@@ -1,24 +1,33 @@
 #! /bin/bash
-arr=(`cat match/timeout.out`)
-num=0
-for i in ${arr[*]} ; do
-    ((num++))
-    if [ $((num%2)) -eq 1 ] ; then
-        continue
-    fi
-    n=`echo $i | tr -cd [:digit:]`
-    echo "${n%121}_gcc-12.1_output.c" >> tmp/unreduce
-    # if [ -f "problem/${n%121}_gcc-12.1_output.c" ] ; then
-    #     echo problem/${n%121}_gcc-12.1_output.c
-    #     cp problem/${n%121}_gcc-12.1_output.c test/reduce.c
-    #     gcc-12.1 test/reduce.c -gdwarf-4 -O1 -w -o test/reduce
-    #     /home/csmith-2.3.0/../pin-3.21-98484-ge7cd811fd-gcc-linux/pin -t /home/csmith-2.3.0/checkRead/obj-intel64/checkRead.so -- test/reduce func 1>/dev/null 1>&2
-    #     cp descript.out problem/${n%121}_gcc-12.1_descript.out
-    # fi
-    # if [ -f "problem/${i}_icc_output.c" ] ; then
-    #     cp problem/${i}_icc_output.c test/reduce.c
-    #     icc test/reduce.c -gdwarf-4 -O1 -w -o test/reduce
-    #     /home/csmith-2.3.0/../pin-3.21-98484-ge7cd811fd-gcc-linux/pin -t /home/csmith-2.3.0/checkRead/obj-intel64/checkRead.so -- test/reduce func 1>/dev/null 1>&2
-    #     cp descript.out problem/${i}_icc_descript.out
-    # fi
+
+# arr=(`cat match/timeout.out`)
+# num=0
+# for i in ${arr[*]} ; do
+#     ((num++))
+#     if [ $((num%2)) -eq 1 ] ; then
+#         continue
+#     fi
+#     n=`echo $i | tr -cd [:digit:]`
+#     echo "${n%121}_gcc-12.1_output.c" >> tmp/unreduce
+#     # if [ -f "problem/${n%121}_gcc-12.1_output.c" ] ; then
+#     #     echo problem/${n%121}_gcc-12.1_output.c
+#     #     cp problem/${n%121}_gcc-12.1_output.c test/reduce.c
+#     #     gcc-12.1 test/reduce.c -gdwarf-4 -O1 -w -o test/reduce
+#     #     /home/csmith-2.3.0/../pin-3.21-98484-ge7cd811fd-gcc-linux/pin -t /home/csmith-2.3.0/checkAccess/obj-intel64/checkAccess.so -- test/reduce func 1>/dev/null 1>&2
+#     #     cp descript.out problem/${n%121}_gcc-12.1_descript.out
+#     # fi
+#     # if [ -f "problem/${i}_icc_output.c" ] ; then
+#     #     cp problem/${i}_icc_output.c test/reduce.c
+#     #     icc test/reduce.c -gdwarf-4 -O1 -w -o test/reduce
+#     #     /home/csmith-2.3.0/../pin-3.21-98484-ge7cd811fd-gcc-linux/pin -t /home/csmith-2.3.0/checkAccess/obj-intel64/checkAccess.so -- test/reduce func 1>/dev/null 1>&2
+#     #     cp descript.out problem/${i}_icc_descript.out
+#     # fi
+# done
+
+
+# rename *checkRead.out to checkAccess.out
+files=(`find ./ -name "*checkRead.out"`)
+for file in ${files[*]} ; do
+    mv $file ${file%checkRead\.out}checkAccess.out
 done
+# 测试多线程

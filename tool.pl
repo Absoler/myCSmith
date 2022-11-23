@@ -44,19 +44,19 @@ for my $src_file (@files){
     #     next;
     # }
     # print $file;
-    # if(-e "./problem/${num}_gcc-12.1_checkRead.out"){
+    # if(-e "./problem/${num}_gcc-12.1_checkAccess.out"){
     #     $id=1;
     #     copy("./problem/${num}_output.c" , "./problem/${num}_gcc-12.1_output.c");
     # }
-    # if(-e "./problem/${num}_clang_checkRead.out"){
+    # if(-e "./problem/${num}_clang_checkAccess.out"){
     #     $id=1;
     #     copy("./problem/${num}_gcc-12.1_output.c" , "./problem/${num}_clang_output.c");
     # }
-    # if(-e "./problem/${num}_icc_checkRead.out"){
+    # if(-e "./problem/${num}_icc_checkAccess.out"){
     #     $id=1;
     #     copy("./problem/${num}_gcc-12.1_output.c" , "./problem/${num}_icc_output.c");
     # }
-    # if(-e "./problem/${num}_gcc-12.1_checkRead.out" || -e "./problem/${num}_checkRead.out"){
+    # if(-e "./problem/${num}_gcc-12.1_checkAccess.out" || -e "./problem/${num}_checkAccess.out"){
     #     next;
     # }
     # unlink "./problem/${num}_gcc-12.1_output.c";

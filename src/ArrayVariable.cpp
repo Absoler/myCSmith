@@ -285,7 +285,7 @@ ArrayVariable::get_name_withIndices() const{
 	}
 	return res;
 }
-/* choose an unloaded element to use*/
+/* choose an unused element to use*/
 vector<int>
 ArrayVariable::choose_indics(void) const{
 	if(is_global()){
@@ -297,7 +297,7 @@ ArrayVariable::choose_indics(void) const{
 	for(unsigned _=0;_<sizes.size();_++){
 		res.clear();	//all indices in res are legal
 		for(int i=0; i<mgr->len; i++){
-			if(!mgr->subMgrs[i]->loaded||!is_global()){
+			if(!mgr->subMgrs[i]->used||!is_global()){
 				res.push_back(i);
 			}
 		}
@@ -311,7 +311,7 @@ ArrayVariable::choose_indics(void) const{
 		mgr=mgr->subMgrs[index];
 	}
 	if(illegal){
-		//still use when all loaded, should be write
+		//still use when all used, should be write
 		ans.clear();
 		mgr=arrMgr;
 		for(unsigned _=0;_<sizes.size();_++){

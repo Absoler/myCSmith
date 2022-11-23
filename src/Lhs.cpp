@@ -111,23 +111,36 @@ Lhs::make_random(CGContext &cg_context, const Type* t, const CVQualifiers* qfer,
 			valid = false;
 		}
 		if(valid){
-			if(var->name=="l_66"){
-				printf("1");
-			}
-			//if this is compound_assign, then var will also be read!
-			map<int, VariableSet> targets;
-			int deref_level = var->type->get_indirect_level() - t->get_indirect_level();
-			int read_level = ((compound_assign||asExpression)?deref_level:deref_level-1);
-			targets=FactPointTo::get_pointees_under_level(var, read_level, fm->global_facts);
-			
-			for(int i=0; i<=read_level; i++){
-				for(const Variable* v:targets[i]){
-					if(VariableSelector::check_var_loaded(v, (v==var))){
-						valid=false;
-						break;
-					}
-				}
-			}
+            if(var->name=="l_45"){
+                printf("1");
+            }
+            if(CGOptions::test_introduce_store()){
+                // check store
+                int deref_level = var->type->get_indirect_level() - t->get_indirect_level();
+                VariableSet targets = FactPointTo::merge_pointees_of_pointer(var, deref_level, fm->global_facts);
+                for(const Variable* v: targets){
+                    if(VariableSelector::check_var_used(v, var == v)){
+                        valid = false;
+                        break;
+                    }
+                }
+            }else{
+                // check read
+			    // if this is compound_assign, then var will also be read!
+                map<int, VariableSet> targets;
+                int deref_level = var->type->get_indirect_level() - t->get_indirect_level();
+                int read_level = ((compound_assign||asExpression)?deref_level:deref_level-1);
+                targets=FactPointTo::get_pointees_under_level(var, read_level, fm->global_facts);
+                
+                for(int i=0; i<=read_level; i++){
+                    for(const Variable* v:targets[i]){
+                        if(VariableSelector::check_var_used(v, (v==var))){
+                            valid=false;
+                            break;
+                        }
+                    }
+                }
+            }
 			
 		}
 		if (valid) {
@@ -136,20 +149,38 @@ Lhs::make_random(CGContext &cg_context, const Type* t, const CVQualifiers* qfer,
 			if (tmp.visit_facts(fm->global_facts, cg_context)) {
 				// bookkeeping
 				int deref_level = tmp.get_indirect_level();
-				int read_level = ((compound_assign||asExpression)?deref_level:deref_level-1);
-				if(deref_level<0||deref_level>1){
-					// printf("write %d\n",deref_level);
-				}
-				map<int, VariableSet> targets;
-				targets=FactPointTo::get_pointees_under_level(var, read_level, fm->global_facts);
-				for(int i=0; i<=read_level; i++){
-					for(const Variable* var:targets[i]){
-						if(var->is_argument()&&i<read_level){
-							VariableSelector::record_paramUse(var, cg_context, read_level-i);
-						}
-						VariableSelector::set_used(var, cg_context);
-					}
-				}
+
+                if(CGOptions::test_introduce_store()){
+                    // set stored
+                    map<int, VariableSet> derefsMap = FactPointTo::get_pointees_under_level(var, deref_level, fm->global_facts);
+                    for(int i=0; i<=deref_level; i++){
+                        for(const Variable* v: derefsMap[i]){
+                            if(v->is_argument()){
+                                VariableSelector::record_paramStore(v, cg_context, deref_level-i);
+                            }
+                            if(i==deref_level){
+                                VariableSelector::set_used(v, cg_context);
+                            }
+                        }
+                    }
+                }else{
+                    //set loaded
+                
+                    int read_level = ((compound_assign||asExpression)?deref_level:deref_level-1);
+                    if(deref_level<0||deref_level>1){
+                        // printf("write %d\n",deref_level);
+                    }
+                    map<int, VariableSet> derefsMap;
+                    derefsMap=FactPointTo::get_pointees_under_level(var, read_level, fm->global_facts);
+                    for(int i=0; i<=read_level; i++){
+                        for(const Variable* v: derefsMap[i]){
+                            if(v->is_argument()&&i<read_level){
+                                VariableSelector::record_paramRead(v, cg_context, read_level-i);
+                            }
+                            VariableSelector::set_used(v, cg_context);
+                        }
+                    }
+                }
 				if (deref_level > 0) {
 					incr_counter(Bookkeeper::write_dereference_cnts, deref_level);
 				}

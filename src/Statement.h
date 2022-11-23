@@ -67,7 +67,7 @@ class StatementGoto;
 class Variable;
 class Expression;
 
-typedef map<const Variable*, int> ReadCounter;
+typedef map<const Variable*, int> UseCounter;
 typedef map<pair<const Function*, const Function*>, int> CallCounter;
 
 enum eStatementType
@@ -180,7 +180,7 @@ public:
 	static int get_current_sid(void) { return sid; }
 
 	int get_blk_depth(void) const;
-	bool merge_readCounter(ReadCounter& counter);
+	bool merge_useCounter(UseCounter& counter);
 	void merge_callCounter(CallCounter& counter);
 	// unique id for each statement
 	int stm_id;
@@ -190,7 +190,7 @@ public:
 
 	static ProbabilityTable<unsigned int, ProbName> *stmtTable_;
 
-	ReadCounter read_counter;	// record read times in this statement
+	UseCounter use_counter;	// record read times in this statement
 	CallCounter call_counter;	// record call-edge in this statement
 protected:
 	Statement(eStatementType st, Block* parent);

@@ -70,6 +70,9 @@ using namespace std;
  */
 class CGOptions {
 public:
+    static bool test_introduce_store(void);
+    static bool test_introduce_store(bool p);
+
 	static bool verbose(void);
 	static bool verbose(bool p);
 
@@ -487,6 +490,7 @@ private:
 	static void parse_string_options(string vname, vector<std::string> &v);
 
 	// Until I do this right, just make them all static.
+    static bool test_introduce_store_;
 	static bool verbose_;
 	static bool	compute_hash_;
 	static bool	depth_protect_;

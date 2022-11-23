@@ -227,12 +227,12 @@ Block::make_random(CGContext &cg_context, bool looping, int init, int test, int 
 		b->stms.push_back(s);
 		// move temp counter from cg_context to s
 		if(s->eType!=eFor && s->eType!=eIfElse && s->eType!=eBlock){
-			s->read_counter=cg_context.get_current_func()->stm_read_Counter;
-			cg_context.get_current_func()->stm_read_Counter.clear();
+			s->use_counter=cg_context.get_current_func()->stm_use_Counter;
+			cg_context.get_current_func()->stm_use_Counter.clear();
 			s->call_counter=cg_context.get_current_func()->stm_call_Counter;
 			cg_context.get_current_func()->stm_call_Counter.clear();
 		}
-		b->merge_readCounter(s->read_counter);
+		b->merge_useCounter(s->use_counter);
 		b->merge_callCounter(s->call_counter);
 		
 		if (s->must_return()) {
@@ -855,7 +855,7 @@ Block::post_creation_analysis(CGContext& cg_context, const Effect& pre_effect)
 			len = stms.size();
 			for (i=index; i<len; i++) {
 				// undo read counter in stms[i]
-				for(auto p:stms[i]->read_counter){
+				for(auto p:stms[i]->use_counter){
 					const Variable* var=p.first;
 					int cnt=p.second;
 					if(var->name=="g_846"){

@@ -316,14 +316,14 @@ Statement::make_random(CGContext &cg_context,
 }
 
 bool
-Statement::merge_readCounter(ReadCounter& counter){
+Statement::merge_useCounter(UseCounter& counter){
 	bool repeat=false;
 	for(auto p:counter){
-		if(read_counter.find(p.first)!=read_counter.end()){
+		if(use_counter.find(p.first)!=use_counter.end()){
 			repeat=true;	//两个地方记录了对同一个变量的读，有问题
 			break;
 		}
-		read_counter[p.first]=p.second;
+		use_counter[p.first]=p.second;
 	}
 	return repeat;
 }
@@ -666,7 +666,7 @@ Statement::stm_visit_facts(vector<const Fact*>& inputs, CGContext& cg_context, b
 			if(!var->is_global()){
 				continue;
 			}
-			for(auto p:read_counter){
+			for(auto p:use_counter){
 				if(var==p.first||var==p.first->get_collective()){
 					more=false;
 					break;

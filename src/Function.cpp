@@ -990,7 +990,7 @@ Function::doFinalization(void)
 		printf("\ninformation of param read\n");
 		for(Function* func:FuncList){
 			printf("%s:\n", func->name.c_str());
-			for(auto p:func->param_read_counter){
+			for(auto p:func->param_use_counter){
 				printf("%s\n", p.first->name.c_str());
 				for(auto pp:p.second){
 					printf("level: %d	cnt: %d\n", pp.first, pp.second);

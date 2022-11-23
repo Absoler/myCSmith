@@ -91,8 +91,8 @@ StatementIf::make_random(CGContext &cg_context)
 	}
 	Effect eff = cg_context.get_effect_stm();
 
-	ReadCounter expr_readCounter = cg_context.get_current_func()->stm_read_Counter;
-	cg_context.get_current_func()->stm_read_Counter.clear();
+	UseCounter expr_UseCounter = cg_context.get_current_func()->stm_use_Counter;
+	cg_context.get_current_func()->stm_use_Counter.clear();
 	CallCounter expr_callCounter = cg_context.get_current_func()->stm_call_Counter;
 	cg_context.get_current_func()->stm_call_Counter.clear();
 
@@ -110,9 +110,9 @@ StatementIf::make_random(CGContext &cg_context)
 	// compute accumulated effect for this statement
 	si->set_accumulated_effect_after_block(eff, if_true, cg_context);
 	si->set_accumulated_effect_after_block(eff, if_false, cg_context);
-	si->merge_readCounter(expr_readCounter);
-	si->merge_readCounter(if_true->read_counter);
-	si->merge_readCounter(if_false->read_counter);
+	si->merge_useCounter(expr_UseCounter);
+	si->merge_useCounter(if_true->use_counter);
+	si->merge_useCounter(if_false->use_counter);
 	si->merge_callCounter(expr_callCounter);
 	si->merge_callCounter(if_true->call_counter);
 	si->merge_callCounter(if_false->call_counter);

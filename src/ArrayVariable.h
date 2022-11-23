@@ -42,14 +42,14 @@ using namespace std;
 
 class ArrayMgr{
 	public:
-	bool loaded;
-	bool part_loaded;	// when check this, consider loaded simultaneously in case of forgetting set this  
+	bool used;
+	bool part_used;	// when check this, consider used simultaneously in case of forgetting set this  
 	std::vector<ArrayMgr*> subMgrs;
 	int len,empty;
-	ArrayMgr():loaded(false),part_loaded(false),len(0){}
+	ArrayMgr():used(false),part_used(false),len(0){}
 	ArrayMgr(vector<unsigned int> sizes){
-		loaded=false;
-		part_loaded=false;
+		used=false;
+		part_used=false;
 		if(!sizes.empty()){
 			len=sizes.back();
 			empty=len;
@@ -82,7 +82,7 @@ public:
 	const std::vector<const Expression*>& get_more_init_values(void) const { return init_values;}
 	bool no_loop_initializer(void) const;
 
-	vector<int> choose_indics(void) const;	//choose an unloaded element to use
+	vector<int> choose_indics(void) const;	//choose an unused element to use
 	ArrayVariable* itemize(void) const;
 	ArrayVariable* itemize(const vector<int>& const_indices) const;
 	ArrayVariable* itemize(const std::vector<const Variable*>& indices, Block* blk) const;

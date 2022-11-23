@@ -723,6 +723,11 @@ FactPointTo::get_pointees_in_range(const Variable* ptr, const std::vector<const 
 	// for an variable of n-ref type, its actual indrect level could be from -1 to n
 	// when we use a var directly, we care about pointees accessed in the current dereference process
 	// when we use a var as argument, we care about which pointees would be deref-ed in the future (inside the callee).
+    /*   
+        so we return a map which describe <indirect_level -> pointees> relation of a parameter, which means
+        redirecting indirect_level to start from 1,
+        if start_level == -1, then <1, ptr> should be included, and indirects of other pair should be incremented by 1.
+    */
 	/*
 	(type of var is int***)
 		\	  /		***var

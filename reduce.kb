@@ -4,10 +4,10 @@ cd $root_dir
 cp problem/$1 test/reduce.c 
 file=$1
 
-cp problem/${file%_*}_checkRead.out test/checkRead.old
+cp problem/${file%_*}_checkAccess.out test/checkAccess.old
 cp problem/${file%_*}_descript.out test/descript.old
 cd test
-# awk -F ' ' '/g_[0-9]+:/{print $1}' checkRead.old > vars.out
+# awk -F ' ' '/g_[0-9]+:/{print $1}' checkAccess.old > vars.out
 ./pl.pm reduce.c $2
 state=$?
 if [ $state -eq 0 ] ; then
@@ -16,7 +16,7 @@ if [ $state -eq 0 ] ; then
     cat target.c >> full.c
     cat main.c >> full.c
     cp full.c ../patterns/$1
-    cp checkRead.old ../patterns/${file%_*}_checkRead.out
+    cp checkAccess.old ../patterns/${file%_*}_checkAccess.out
     cd ..
     echo reduce $1 successfully >> reduce.log
 else

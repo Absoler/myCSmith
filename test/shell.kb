@@ -1,0 +1,13 @@
+#! /bin/bash
+opt_option=-O2
+pin_root=/home/pin-3.21-98484-ge7cd811fd-gcc-linux/
+if [ $1 == 0 ] ; then
+    compiler=gcc-12.1
+elif [ $1 == 1 ] ; then
+    compiler=icc
+else 
+    compiler=clang
+fi
+$compiler output2.c -gdwarf-4 $opt_option  -w -o output2 -lpthread
+$pin_root/pin -t ../checkAccess/obj-intel64/checkAccess.so -- ./output2 func
+objdump -dl output2 > disas
