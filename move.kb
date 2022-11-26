@@ -1,0 +1,25 @@
+#! /bin/bash
+
+# modify number of files problem/ or patterns/
+# file format: number_compiler_name
+#
+#
+# args[1]: dir where we modify files
+# args[2]: base, final name will be ((number+base))_compiler_name
+# args[3]: dir where modified files will be moved to
+
+if [ $# -lt 3 ] ; then 
+    echo not enough args
+fi
+
+dir=$1
+base=$2
+to_dir=$3
+
+files=(`ls $dir`)
+for file in ${files[*]} ; do
+    num=`echo $file | sed "s%\([0-9]\+\).*%\1%"`
+    newNum=$[num+base]
+    newFile=${newNum}_${file#*_}
+    cp $dir/$file $to_dir/$newFile
+done

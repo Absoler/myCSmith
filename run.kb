@@ -8,13 +8,6 @@
 #   
 #-----
 
-# 1665 for start
-# 1902 O0 => 2049
-# 2049 back to O1
-# no problem in O3 for 20000 tests
-# 2433 try to strengthen restrictions ( rm 'fromPost' in stm_visit_facts)
-# 3971 start O2
-# 4200 block unexpect check in pintool for O2
 
 opt_option=-O2
 test_type=1
@@ -71,6 +64,7 @@ do
     fi
 
     if [ $[cnt%1000] == 0 ] ; then
+        echo `date`
         echo $cnt cases tested
         echo runtime error $run_err
     fi
