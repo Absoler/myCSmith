@@ -1,12 +1,12 @@
 #! /bin/bash
 
 # init project:
-#   set some variables and create some subdirectories
+#   set some variables and create some directories/files, maybe build
 #   
 #   args[1]: optimization option (-O2)
 #   args[2]: test type (introduce load or store, 0 and 1 respectively)
 #   args[3]: pin_root path (the absolute path to the pin package)
-#
+#   args[4]: whether build (None means not, 1 means build in `build` directory)
 # -------------------
 
 kb_scripts=(`find ./ -name "*.kb"`)
@@ -37,10 +37,33 @@ for file in ${kb_scripts[*]} ; do
     sed "s%^\(pin_root=\).*%\1$3%" $file -i.bak
 done
 
+if [ $# -ge 4 ] ; then
+    if [ $4 -eq 1 ] ; then
+        # build csmith
+        mkdir ./build
+        cd build
+        cmake ..
+        make -j 4
+        cd ..
+        # build pintool
+        ./makePintool.kb
+    fi
+fi
+
+
 if [ ! -d "./problem" ] ; then
     mkdir ./problem
 fi
 
 if [ ! -d "./patterns" ] ; then
     mkdir ./patterns
+fi
+
+if [ ! -d "./compileFail" ] ; then
+    mkdir ./compileFail
+fi
+
+if [ ! -f "./base.out" ] ; then 
+    echo 0 > base.out
+    echo 0 >> base.out
 fi

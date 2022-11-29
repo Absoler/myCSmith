@@ -92,6 +92,9 @@ vector<string> generate_useFuncs(){
 	for(Function *func:FuncList){
 		res.push_back("	side=(side+(unsigned long)"+func->name+"%1000)%1000;");
 	}
+    res.push_back("	side=(side+(unsigned long)getInfo%1000)%1000;");
+    res.push_back("	side=(side+(unsigned long)setInfo%1000)%1000;");
+    res.push_back("	side=(side+(unsigned long)setReadCnt%1000)%1000;");
 	return res;
 }
 /*
