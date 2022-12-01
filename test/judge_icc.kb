@@ -8,10 +8,10 @@
 #
 #-----
 
-root_dir=/home/csmith_store
-opt_option=-O2
+root_dir=/home/csmith_load_o3
+opt_option=-O3
 pin_root=/home/pin-3.21-98484-ge7cd811fd-gcc-linux/
-test_type=1
+test_type=0
 
 > full.c
 

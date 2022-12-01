@@ -109,8 +109,8 @@ OutputMgr::~OutputMgr()
 // }
 void 
 OutputMgr::Output_getInfoFunc(std::ostream &out){
-	out<<"void __attribute__ ((noinline)) getInfo(unsigned long addr, int cnt){"<<endl;
-	out<<"    side=(side+(addr+cnt)%1000)%1000;"<<endl;
+	out<<"void __attribute__ ((noinline)) getInfo(unsigned long varInfosAddr, int varCnt, unsigned long accessesAddr, int accessCnt){"<<endl;
+	out<<"    side=(side+(varInfosAddr+varCnt)%1000 + (accessesAddr+accessCnt)%1000)%1000;"<<endl;
 	out<<"}"<<endl;
 }
 
@@ -118,6 +118,7 @@ void
 OutputMgr::Output_extraVariables(std::ostream &out){
 	out<<"unsigned long side=0;"<<endl;	//create side-effect for target behaviors
 
+    out<<"#define MAX_VAR_NUM 1000"<<endl;
 	out<<"struct VarInfo{"<<endl;
 	out<<"	unsigned long addr;"<<endl;
 	out<<"	unsigned int size;"<<endl;
@@ -125,6 +126,13 @@ OutputMgr::Output_extraVariables(std::ostream &out){
 	out<<"}varInfos[1000];"<<endl;
 	out<<"int global_cnt=0;"<<endl;
 
+    out<<"#define MAX_ACCESS_NUM 2000"<<endl;
+    out<<"struct AccessInfo{"<<endl;
+    out<<"    unsigned long addr;"<<endl;
+    out<<"    unsigned int length;"<<endl;
+    out<<"    int cnt;"<<endl;
+    out<<"}accesses[MAX_ACCESS_NUM];"<<endl;
+    out<<"int access_cnt=0;"<<endl;
 }
 
 void
@@ -141,7 +149,10 @@ OutputMgr::Output_setInfoFunc(std::ostream &out){
 void 
 OutputMgr::Output_setReadCntFunc(std::ostream &out){
 	out<<"void __attribute__ ((noinline)) setReadCnt(unsigned long addr, unsigned int length, int cnt){"<<endl;
-    out<<"side=(side+(addr+length+cnt)%1000)%1000;"<<endl;
+    out<<"    accesses[access_cnt].addr=addr;"<<endl;
+    out<<"    accesses[access_cnt].length = length;"<<endl;
+    out<<"    accesses[access_cnt].cnt =cnt;"<<endl;
+    out<<"    access_cnt++;"<<endl;
 	out<<"}"<<endl;
 }
 
@@ -186,10 +197,10 @@ OutputMgr::OutputMain(std::ostream &out)
 	// send var info (name, length) to pintool
 	VariableSelector::generate_setGlobalInfos(out);
 	output_tab(out, 1);
-	out<<"getInfo(varInfos, global_cnt);"<<endl;	//transfer the address of varInfos to pintool
+	
 	// send globals' read counter to pintool
 	Function::generate_setReadCnt(out);
-	
+	out<<"getInfo((unsigned long)varInfos, global_cnt, (unsigned long)accesses, access_cnt);"<<endl;	//transfer varInfos and accessInfos to pintool
 
 	
 	// if (CGOptions::blind_check_global()) {

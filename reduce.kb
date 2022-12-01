@@ -1,5 +1,5 @@
 #! /bin/bash
-root_dir=/home/csmith_store
+root_dir=/home/csmith_load_o3
 cd $root_dir
 cp problem/$1 test/reduce.c 
 file=$1

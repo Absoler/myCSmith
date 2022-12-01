@@ -908,7 +908,7 @@ Function::deleteFunction(Function* func)
 
 string 
 Function::get_setVarCnt(string name, int cnt){
-	return "setReadCnt(&"+name+", sizeof("+name+"), "+std::to_string(cnt)+");";
+	return "setReadCnt((unsigned long)(&"+name+"), sizeof("+name+"), "+std::to_string(cnt)+");";
 }
 
 void 

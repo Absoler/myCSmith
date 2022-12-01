@@ -17,8 +17,10 @@ using std::vector;
 using std::set;
 using std::pair;
 #define VERSION_2
-
+// define COPY_EXPECTED_ACCESS_INFO or PASS_EXPECTED_ACCESS_INFO to decide how to get message about expected accesses. version1 + copy... is wrong
+#define COPY_EXPECTED_ACCESS_INFO
 #define MAX_GLOBAL_VAR_NUM 1000
+#define MAX_ACCESS_NUM 2000
 
 string targetFuncPrefix;
 bool isWrite;
@@ -41,6 +43,7 @@ int cnt_globals=0;
 void print_accesses(FILE* file);
 void print_globals(FILE* file);
 
+#ifdef PASS_EXPECTED_ACCESS_INFO
 //---------get global info------------
 VOID record_var(ADDRINT _addr, ADDRINT cnt){
     // printf("pin info-addr: %lu    cnt: %ld\n",_addr,cnt);
@@ -62,6 +65,7 @@ VOID hack_getInfo(RTN rtn, VOID* v){
 	}
 	RTN_Close(rtn);
 }
+#endif
 
 #ifdef VERSION_1
 struct Access{	//record a access operation
@@ -201,8 +205,8 @@ typedef pair<ADDRINT, uint32_t> Access;
 map<Access, int> expect_counter;    // contain all global vars access, and their expected access times (up-limit for now)
 map<Access, int> actual_counter;    // record actual access times of each accesses 
 set<Access> unexpectedAccesses;      
-set<Access> actual_clusters[MAX_GLOBAL_VAR_NUM];
-set<Access> expect_clusters[MAX_GLOBAL_VAR_NUM];
+set<Access> actual_clusters[MAX_GLOBAL_VAR_NUM];    // contain all actual acesses belonging to corresponding var, (may not overlapped with each other, only belong to the same var)
+set<Access> expect_clusters[MAX_GLOBAL_VAR_NUM];    // contain all expected acesses of corresponding var
 map<Access, set<ADDRINT>> instOfAccess;    // record all insts addrs a access occur
 map<Access, int> varOfAccess;              // record which var the access belongs to (record index)
 map<Access, bool> isForVars;    // record whether a access is forVar, maybe not necessary now, 'cause we combine two situation
@@ -213,6 +217,7 @@ map<ADDRINT, string> funcMap;   // store funcName inst belongs
 map<ADDRINT, pair<int, int>> locMap;    // store src location the inst belongs
 map<ADDRINT, string> typeMap;   // store inst's mnemonic
 
+// get the global var that cover `access`
 inline int getInd(const Access& access){
     Var tmp = {access.first, access.second, ""};
     return upper_bound(globals, globals+cnt_globals, tmp, comp_Var)-globals-1;
@@ -247,15 +252,18 @@ set<Access> findContainers(const Access& target, const set<Access>& accesseset){
     return res;
 }
 
-
-//----------get vars' limit--------------
+#ifdef PASS_EXPECTED_ACCESS_INFO
+//----------get vars' expect--------------
 VOID record_AccessCnt(ADDRINT addr, int len, int cnt){
+    printf("expect access %lx %d %d\n", addr, len, cnt);
     Access access=std::make_pair<ADDRINT, int>(addr, len);
     expect_counter[access]+=cnt;
 }
 VOID hack_setAccessCnt(RTN rtn, VOID* v){
     RTN_Open(rtn);
-    if(RTN_Name(rtn)=="setReadCnt"){
+    string funcName = RTN_Name(rtn);
+    if(funcName.find("setReadCnt") != funcName.npos){
+        printf("%s\n", funcName.c_str());
         RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR)record_AccessCnt,
             IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
             IARG_FUNCARG_ENTRYPOINT_VALUE, 1,
@@ -263,13 +271,61 @@ VOID hack_setAccessCnt(RTN rtn, VOID* v){
     }
     RTN_Close(rtn);
 }
+#endif
+
+#ifdef COPY_EXPECTED_ACCESS_INFO
+
+struct Expect{
+    ADDRINT addr;
+    UINT32 length;
+    int cnt;
+}expects[MAX_ACCESS_NUM];
+int cnt_expects = 0;
+
+
+////----------get vars' decls and expected accesses--------------
+VOID record_info(ADDRINT varInfosAddr, ADDRINT varCnt, ADDRINT accessesAddr, ADDRINT accessCnt){
+    if(varCnt>MAX_GLOBAL_VAR_NUM){
+        printf("too many global variables!\n");
+        exit(1);
+    }
+    PIN_SafeCopy(globals,Addrint2VoidStar(varInfosAddr),sizeof(Var)*varCnt);
+    cnt_globals = varCnt;
+    sort(globals, globals+varCnt, comp_Var);
+
+    if(accessCnt>MAX_ACCESS_NUM){
+        printf("too many accesses!\n");
+        exit(1);
+    }
+    PIN_SafeCopy(expects, Addrint2VoidStar(accessesAddr),sizeof(Expect)*accessCnt);
+    cnt_expects = accessCnt;
+    for (unsigned i=0; i<accessCnt; i++){
+        Access access = std::make_pair<ADDRINT, int>(expects[i].addr, expects[i].length);
+        expect_counter[access] += expects[i].cnt;
+    }
+    printf("expected access count: %lu\n", accessCnt);
+}
+
+VOID hack_getInfo(RTN rtn, VOID* v){
+	RTN_Open(rtn);
+	if(RTN_Name(rtn)=="getInfo"){
+		RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR)record_info,
+			IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
+			IARG_FUNCARG_ENTRYPOINT_VALUE, 1, 
+            IARG_FUNCARG_ENTRYPOINT_VALUE, 2,
+			IARG_FUNCARG_ENTRYPOINT_VALUE, 3, IARG_END);
+	}
+	RTN_Close(rtn);
+}
+
+#endif
 
 //----------record access info-----------
 VOID record_Access(ADDRINT ip, ADDRINT start, UINT32 len) { 
     Access access=std::make_pair(start, len);
     // printf("%lx\n", start);
     if(isGlobal(access)){
-        // printf("%lx\n", start);
+        printf("actual access %lx\n", start);
         actual_counter[access]++;
         if(instOfAccess[access].find(ip)==instOfAccess[access].end()){
             // we don't know this inst load this content before
@@ -309,6 +365,7 @@ VOID Fini(INT32 code, VOID* val){
     fprintf(outfile, (isWrite?"test introduced stores\n\n":"test introduced loads\n\n"));
     print_globals(outfile);
     // build relations between global vars and global accesses
+    
     for(auto p:actual_counter){
         Access access=p.first;
         int id=getInd(access);
@@ -329,6 +386,7 @@ VOID Fini(INT32 code, VOID* val){
     fprintf(descriptFile, "more\n");
     for(int id=0;id<cnt_globals;id++){
         if(actual_clusters[id].size()>0){
+            printf("%s has %lu accesses\n", globals[id].name, actual_clusters[id].size());
             for(Access access:actual_clusters[id]){
                 set<Access> actual_set=findContainers(access, actual_clusters[id]);
                 set<Access> expect_set=findContainers(access, expect_clusters[id]);
@@ -374,6 +432,8 @@ VOID Fini(INT32 code, VOID* val){
                     fprintf(descriptFile, "done\n");
                     fprintf(outfile, "\n");
                     fail=true;
+                }else{
+                    printf("    %d/%d\n", actual_cnt, expect_cnt);
                 }
             }
         }
@@ -423,8 +483,11 @@ int main(int argc, char* argv[]){
 
     RTN_AddInstrumentFunction(hack_getInfo, 0);
     RTN_AddInstrumentFunction(hack_targetFunc, 0);
+
+#ifdef PASS_EXPECTED_ACCESS_INFO
     RTN_AddInstrumentFunction(hack_setAccessCnt, 0);
-    
+#endif
+
     PIN_AddFiniFunction(Fini, 0);
 
     PIN_StartProgram();  

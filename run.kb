@@ -9,8 +9,8 @@
 #-----
 
 
-opt_option=-O2
-test_type=1
+opt_option=-O3
+test_type=0
 pin_root=/home/pin-3.21-98484-ge7cd811fd-gcc-linux/
 
 if [ $# -ge 1 ]; then
@@ -23,7 +23,7 @@ if [ $test_type -eq 1 ]; then
 else
     type_option=""
 fi
-compilers=("gcc-12.1"  "icc")
+compilers=("gcc-12.1"  "clang")
 
 # 1th line of base.out is the number of C cases, 2th line is the next of current reduced case
 read base < ./base.out
@@ -37,7 +37,7 @@ do
     build/src/csmith $type_option --no-safe-math --no-bitfields --no-volatiles --probability-configuration ./prob.txt  -o runtime/output2.c 1>/dev/null
     fail=0  # fail flag
     for compiler in ${compilers[*]} ; do
-        $compiler runtime/output2.c -g -w $opt_option -o runtime/output2
+        $compiler runtime/output2.c -gdwarf-4 -w $opt_option -o runtime/output2
         if [ $? -gt 0 ] ; then
             echo $compiler compilation error
             cp runtime/output2.c compileFail/${cnt}output2.c
