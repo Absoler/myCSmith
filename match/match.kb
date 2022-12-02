@@ -28,7 +28,7 @@ icc_checks=(
 )
 
 test_checks=(
-    one_assign_and_return.cocci
+    /home/patcher/storeTestPatterns/onceMore_in_for.cocci
 )
 
 > matched.out
@@ -49,14 +49,14 @@ for file in ${files[*]} ; do
         continue
     fi
 
-    ./judgeC.kb ../patterns/$file
-    if [ $? -ne 0 ] ; then 
-        continue
-    fi
+    # ./judgeC.kb ../patterns/$file
+    # if [ $? -ne 0 ] ; then 
+    #     continue
+    # fi
 
     if [[ $file =~ "gcc" ]] ; then
         match=0
-        for check in ${gcc_checks[*]} ; do
+        for check in ${test_checks[*]} ; do
             echo \>check $check
             res=`timeout 2s spatch -sp_file $check ../patterns/$file -o tmp.c --no-includes`
             if [ $? -eq 124 ] ; then

@@ -75,7 +75,7 @@ patterns/
 !test/*.py
 # scripts
 
-
+match/boring
 
 # log or out
 *.log

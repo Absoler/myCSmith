@@ -1,5 +1,5 @@
 #! /bin/bash
-root_dir=/home/csmith_load_o3
+root_dir=/home/csmith_store
 cd $root_dir
 cp problem/$1 test/reduce.c 
 file=$1
@@ -8,7 +8,7 @@ cp problem/${file%_*}_checkAccess.out test/checkAccess.old
 cp problem/${file%_*}_descript.out test/descript.old
 cd test
 # awk -F ' ' '/g_[0-9]+:/{print $1}' checkAccess.old > vars.out
-./pl.pm reduce.c $2
+./pl.pl reduce.c $2
 state=$?
 if [ $state -eq 0 ] ; then
     > full.c

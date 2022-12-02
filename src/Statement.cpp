@@ -655,27 +655,33 @@ Statement::stm_visit_facts(vector<const Fact*>& inputs, CGContext& cg_context, b
 	bool ok = visit_facts(inputs, cg_context);
 
 	if(1){
-		bool more=true;
+		bool more=true; // assuming for-loop introduce new global-access
 		Effect new_eff = cg_context.get_effect_stm();
+
 		VariableSet read_vars = new_eff.get_read_vars();
+        VariableSet write_vars = new_eff.get_write_vars();
+        const VariableSet *access_vars = &read_vars;
+        if(CGOptions::test_introduce_store()){
+            access_vars = &write_vars;
+        }
 		vector<const Function*> called;
 		for(auto p: call_counter){
 			called.push_back(p.first.second);
 		}
-		for(const Variable* var : read_vars){
+		for(const Variable* var : (*access_vars)){
 			if(!var->is_global()){
 				continue;
 			}
 			for(auto p:use_counter){
 				if(var==p.first||var==p.first->get_collective()){
-					more=false;
+					more=false; // if we mark this var, before then it's safe
 					break;
 				}
 			}
 			
 			if(more){
 				for(auto func: called){
-					for(auto p:func->global_counter){
+					for(auto p:func->global_counter){   // if we mark this var, before then it's safe
 						if(var==p.first||var==p.first->get_collective()){
 							more=false;
 							break;
