@@ -7,14 +7,28 @@
 #   args[2]: test type (introduce load or store, 0 and 1 respectively)
 #   args[3]: pin_root path (the absolute path to the pin package)
 #   args[4]: whether build (None means not, 1 means build in `build` directory)
+#
+#   if no args, clear all env vars
 # -------------------
 
 kb_scripts=(`find ./ -name "*.kb"`)
 py_scripts=(`find ./ -name "*.py"`)
 pl_scripts=(`find ./ -name "*.pl"`)
 
-# add execution permission to all scripts
 scripts=(${kb_scripts[*]} ${py_scripts[*]} ${pl_scripts[*]})
+
+# clear env variables
+if [ $# -lt 1 ] ; then
+    for file in ${scripts[*]} ; do
+        sed "s%^\(root_dir=\).*%\1%" $file -i.bak
+        sed "s%^\(opt_option=\).*%\1%" $file -i.bak
+        sed "s%^\(test_type=\).*%\1%" $file -i.bak
+        sed "s%^\(pin_root=\).*%\1%" $file -i.bak
+    done
+    exit
+fi
+
+# add execution permission to all scripts
 for file in ${scripts[*]} ; do
     chmod +x $file
 done
@@ -69,4 +83,8 @@ fi
 if [ ! -f "./base.out" ] ; then 
     echo 1 > base.out
     echo 0 >> base.out
+fi
+
+if [ ! -f "./match/boring" ] ; then
+    > ./match/boring
 fi

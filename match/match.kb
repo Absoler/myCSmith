@@ -29,6 +29,7 @@ icc_checks=(
 
 test_checks=(
     /home/patcher/storeTestPatterns/onceMore_in_for.cocci
+    /home/patcher/storeTestPatterns/assignConstUnion.cocci
 )
 
 > matched.out
@@ -41,6 +42,8 @@ boring=(`cat boring | sed 's/[^0-9]//g'`)
 matched=()
 unmatched=()
 sum=${#files[*]}
+
+
 for file in ${files[*]} ; do
 # file=2677_gcc-12.1_output.c
     echo $file
@@ -55,24 +58,48 @@ for file in ${files[*]} ; do
     # fi
 
     if [[ $file =~ "gcc" ]] ; then
-        match=0
+        trigger_patterns=() # length == 0, means no match
         for check in ${test_checks[*]} ; do
+            match=0
             echo \>check $check
             res=`timeout 2s spatch -sp_file $check ../patterns/$file -o tmp.c --no-includes`
             if [ $? -eq 124 ] ; then
                 echo $check $file >> timeout.out
             fi
             if [ -n "$res" ] ; then
-                echo $check $file >> matched.out
+                # echo $check $file >> matched.out
                 match=1
             fi
+
+            # add extra checker using descript file
+            check_name=${check##*/}
+            check_name=${check_name%.cocci}
+            desc_val=`cat ./needDescriptCheck.json | jq -r .$check_name` 
+            if [ $match -eq 1 ] && [ "$desc_val" != "None" ] && [ -f ../problem/${file%_*}_descript.out ] ; then
+                ./check_desc.py ../problem/${file%_*}_descript.out $desc_val
+                if [ $? -eq 0 ] ; then
+                    match=0
+                fi
+            fi
+
+            if [ $match -eq 1 ] ; then
+                echo $check trigger $file
+                trigger_patterns=(${trigger_patterns[*]} $check)
+            fi
+
         done
-        if [ $match -eq 0 ] ; then
+        
+
+        if [ ${#trigger_patterns[*]} -eq 0 ] ; then
             unmatched[${#unmatched[*]}]=$file
             echo $file >> unmatched.out
         else
+            for pattern in ${trigger_patterns[*]} ; do
+                echo $pattern $file >> matched.out
+            done
             matched[${#matched[*]}]=$file
         fi
+
     fi
     
     if [[ $file =~ "icc" ]] ; then
@@ -98,6 +125,5 @@ for file in ${files[*]} ; do
         fi
     fi
 done
-
 echo matched ${#matched[*]} / $sum
 echo matched ${#matched[*]} / $sum >> matched.out

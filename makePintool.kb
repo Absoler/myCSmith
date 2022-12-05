@@ -1,5 +1,5 @@
 #! /bin/bash
-pin_root=/home/pin-3.21-98484-ge7cd811fd-gcc-linux/
+pin_root=
 cd checkAccess
 make DEBUG=1 PIN_ROOT=$pin_root obj-intel64/checkAccess.so
 cd ..

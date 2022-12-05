@@ -9,9 +9,9 @@
 #-----
 
 
-opt_option=-O3
-test_type=0
-pin_root=/home/pin-3.21-98484-ge7cd811fd-gcc-linux/
+opt_option=
+test_type=
+pin_root=
 
 if [ $# -ge 1 ]; then
     limit=$1

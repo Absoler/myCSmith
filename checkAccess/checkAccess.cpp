@@ -18,7 +18,7 @@ using std::set;
 using std::pair;
 #define VERSION_2
 // define COPY_EXPECTED_ACCESS_INFO or PASS_EXPECTED_ACCESS_INFO to decide how to get message about expected accesses. version1 + copy... is wrong
-#define COPY_EXPECTED_ACCESS_INFO
+#define PASS_EXPECTED_ACCESS_INFO
 #define MAX_GLOBAL_VAR_NUM 1000
 #define MAX_ACCESS_NUM 2000
 
