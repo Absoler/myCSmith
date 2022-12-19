@@ -28,8 +28,8 @@ if [ $compile_stat -ne 0 ]; then
     exit 1
 fi
 
-# avoid loss of return type, which lead to failure of coccinelle's analysis
-s=`cat info | grep "return type defaults to"`
+# avoid loss of all type, which lead to failure of coccinelle's analysis
+s=`cat info | grep "type" | grep "defaults to"`
 if [ -n "$s" ] ; then
     exit 1
 fi
