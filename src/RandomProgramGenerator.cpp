@@ -402,6 +402,7 @@ main(int argc, char **argv)
 
 			if (!parse_int_arg(argv[i], &g_Seed))
 				exit(-1);
+            printf("set seed: %lu\n", g_Seed);
 			continue;
 		}
 

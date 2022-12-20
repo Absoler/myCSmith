@@ -654,8 +654,12 @@ Statement::stm_visit_facts(vector<const Fact*>& inputs, CGContext& cg_context, b
 	//int h = g++;
 	bool ok = visit_facts(inputs, cg_context);
 
+    /*
+        now we set false for check if new access to global is introduced
+        this will lower the complexity of generated code.
+    */
 	if(1){
-		bool more=true; // assuming for-loop introduce new global-access
+		bool more; // assuming for-loop introduce new global-access
 		Effect new_eff = cg_context.get_effect_stm();
 
 		VariableSet read_vars = new_eff.get_read_vars();
@@ -669,6 +673,7 @@ Statement::stm_visit_facts(vector<const Fact*>& inputs, CGContext& cg_context, b
 			called.push_back(p.first.second);
 		}
 		for(const Variable* var : (*access_vars)){
+            more = true;
 			if(!var->is_global()){
 				continue;
 			}
