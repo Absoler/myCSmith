@@ -1,0 +1,13 @@
+#!/bin/bash
+#
+# args[1] is the csmith seed
+# args[2] is the compiler option
+test_type=
+if [ $test_type == "1" ] ; then
+    test_store=--store
+fi
+cd ..
+echo build/src/csmith $test_store --no-safe-math --no-bitfields --no-volatiles --probability-configuration ./prob.txt --seed $1 -o runtime/output.c
+# cp runtime/output.c test/output2.c
+# cd test
+# ./shell.kb $2

@@ -659,8 +659,9 @@ Statement::stm_visit_facts(vector<const Fact*>& inputs, CGContext& cg_context, b
         this will lower the complexity of generated code.
     */
 	if(1){
-		bool more; // assuming for-loop introduce new global-access
+		bool more = false; // assuming for-loop introduce new global-access
 		Effect new_eff = cg_context.get_effect_stm();
+        Effect cp_new_eff = fm->map_stm_effect[this];   // this must be equal to new_eff?
 
 		VariableSet read_vars = new_eff.get_read_vars();
         VariableSet write_vars = new_eff.get_write_vars();

@@ -30,6 +30,7 @@ icc_checks=(
 test_checks=(
     /home/patcher/storeTestPatterns/onceMore_in_for.cocci
     /home/patcher/storeTestPatterns/assignConstUnion.cocci
+    /home/patcher/storeTestPatterns/complexExpr.cocci
 )
 
 > matched.out
