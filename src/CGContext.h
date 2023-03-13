@@ -60,6 +60,11 @@ class ArrayVariable;
 
 typedef std::vector<const Variable *> VariableSet;
 
+#define __format(__fmt__) "%s(%d)-<%s>: " __fmt__ "\n"
+ 
+#define PRINT_LOC(__fmt__, ...) \
+    printf(__format(__fmt__), __FILE__, __LINE__, __FUNCTION__, ##__VA_ARGS__);
+
 class RWDirective
 {
 public:

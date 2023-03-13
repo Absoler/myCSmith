@@ -156,7 +156,7 @@ Expression::indented_output(std::ostream &out, int indent) const
  *
  */
 Expression *
-Expression::make_random(CGContext &cg_context, const Type* type, const CVQualifiers* qfer, bool no_func, bool no_const, enum eTermType tt)
+Expression::make_random(CGContext &cg_context, const Type* type, const CVQualifiers* qfer, bool no_func, bool no_const, enum eTermType tt, genGuide guide)
 {
 	DEPTH_GUARD_BY_TYPE_RETURN_WITH_FLAG(dtExpression, tt, NULL);
 	Expression *e = 0;
@@ -192,7 +192,9 @@ Expression::make_random(CGContext &cg_context, const Type* type, const CVQualifi
 		}
 		tt = ExpressionTypeProbability(&filter);
 	}
-
+    if ( guide == eGlobalVar ){
+        tt = eVariable;
+    }
 	ERROR_GUARD(NULL);
 
 	switch (tt) {
@@ -202,7 +204,11 @@ Expression::make_random(CGContext &cg_context, const Type* type, const CVQualifi
 		e = Constant::make_random(type);
 		break;
 	case eVariable:
-		e = ExpressionVariable::make_random(cg_context, type, qfer);
+        if (guide == eGlobalVar){
+            e = ExpressionVariable::make_random(cg_context, type, qfer, false, false, NULL, eGlobalVar);
+        }else{
+		    e = ExpressionVariable::make_random(cg_context, type, qfer);
+        }
 		break;
 	case eFunction:
 		e = ExpressionFuncall::make_random(cg_context, type, qfer);

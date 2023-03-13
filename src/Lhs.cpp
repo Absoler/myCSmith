@@ -199,6 +199,152 @@ Lhs::make_random(CGContext &cg_context, const Type* t, const CVQualifiers* qfer,
 	return 0;
 }
 
+Lhs *
+Lhs::make_localLhs(CGContext &cg_context, const Type* t, const CVQualifiers* qfer, bool compound_assign, bool no_signed_overflow, bool asExpression)
+{
+	Function *curr_func = cg_context.get_current_func();
+	FactMgr* fm = get_fact_mgr_for_func(curr_func);
+	vector<const Variable*> dummy;
+	//static int cnt = 0;				// for debug
+    PRINT_LOC("make local lhs start")
+	// save effects, in case we need to backtrack
+	Effect effect_accum = cg_context.get_accum_effect();
+	Effect effect_stm = cg_context.get_effect_stm();
+
+	do {
+		DEPTH_GUARD_BY_TYPE_RETURN(dtLhs, NULL);
+		const Variable* var = 0;
+		// try to use one of the "must_use" variables
+		var = VariableSelector::select_must_use_var(Effect::WRITE, cg_context, t, qfer);
+		if (var == NULL) {
+			bool flag = rnd_flipcoin(SelectDerefPointerProb);
+			if (flag && (rnd_flipcoin(40))) {
+				var = VariableSelector::select_deref_pointer(Effect::WRITE, cg_context, t, qfer, dummy);
+				ERROR_GUARD(NULL);
+				if (var) {
+					int deref_level = var->type->get_indirect_level() - t->get_indirect_level();
+					assert(!var->qfer.is_const_after_deref(deref_level));
+				}
+			}
+		}
+		if (var==0) {
+			CVQualifiers new_qfer(*qfer);
+			if (!(new_qfer.wildcard)) {
+				new_qfer.restrict(Effect::WRITE, cg_context);
+			}
+            eVariableScope scope = MAX_VAR_SCOPE;
+            if(rnd_flipcoin(80)){
+                scope = eParentLocal;
+            }
+			var = VariableSelector::select(Effect::WRITE, cg_context, t, &new_qfer, dummy, eDerefExact, scope);
+			ERROR_GUARD(NULL);
+			int deref_level = var->type->get_indirect_level() - t->get_indirect_level();
+			assert(!var->qfer.is_const_after_deref(deref_level));
+		}
+		ERROR_GUARD(NULL);
+		assert(var);
+		bool valid = FactPointTo::opportunistic_validate(var, t, fm->global_facts) && !cg_context.get_effect_stm().is_written(var);
+	
+		// we don't want signed integer for some operations, such as ++/-- which has potential of overflowing
+		// it's possible for unsigned bitfield to overflow: consider a 31-bit unsigned field that is promoted to 32-bit signed int before arithematics
+		if (valid && t->eType == eSimple && no_signed_overflow && (var->type->get_base_type()->is_signed() || var->isBitfield_)) {
+			valid = false;
+		}
+		if (valid && CGOptions::ccomp() && var->isBitfield_ && t->is_long_long()) {
+			valid = false;
+		}
+		if (!t->is_float() && var->type->is_float()) {
+			valid = false;
+		}
+		if(valid){
+            if(var->name=="l_45"){
+                printf("1");
+            }
+            if(CGOptions::test_introduce_store()){
+                // check store
+                int deref_level = var->type->get_indirect_level() - t->get_indirect_level();
+                VariableSet targets = FactPointTo::merge_pointees_of_pointer(var, deref_level, fm->global_facts);
+                for(const Variable* v: targets){
+                    if(VariableSelector::check_var_used(v, var == v)){
+                        valid = false;
+                        break;
+                    }
+                }
+            }else{
+                // check read
+			    // if this is compound_assign, then var will also be read!
+                map<int, VariableSet> targets;
+                int deref_level = var->type->get_indirect_level() - t->get_indirect_level();
+                int read_level = ((compound_assign||asExpression)?deref_level:deref_level-1);
+                targets=FactPointTo::get_pointees_under_level(var, read_level, fm->global_facts);
+                
+                for(int i=0; i<=read_level; i++){
+                    for(const Variable* v:targets[i]){
+                        if(VariableSelector::check_var_used(v, (v==var))){
+                            valid=false;
+                            break;
+                        }
+                    }
+                }
+            }
+			
+		}
+		if (valid) {
+			assert(var);
+			Lhs tmp(*var, t, compound_assign);
+			if (tmp.visit_facts(fm->global_facts, cg_context)) {
+				// bookkeeping
+				int deref_level = tmp.get_indirect_level();
+
+                if(CGOptions::test_introduce_store()){
+                    // set stored
+                    map<int, VariableSet> derefsMap = FactPointTo::get_pointees_under_level(var, deref_level, fm->global_facts);
+                    for(int i=0; i<=deref_level; i++){
+                        for(const Variable* v: derefsMap[i]){
+                            if(v->is_argument()){
+                                VariableSelector::record_paramStore(v, cg_context, deref_level-i);
+                            }
+                            if(i==deref_level){
+                                VariableSelector::set_used(v, cg_context);
+                            }
+                        }
+                    }
+                }else{
+                    //set loaded
+                
+                    int read_level = ((compound_assign||asExpression)?deref_level:deref_level-1);
+                    if(deref_level<0||deref_level>1){
+                        // printf("write %d\n",deref_level);
+                    }
+                    map<int, VariableSet> derefsMap;
+                    derefsMap=FactPointTo::get_pointees_under_level(var, read_level, fm->global_facts);
+                    for(int i=0; i<=read_level; i++){
+                        for(const Variable* v: derefsMap[i]){
+                            if(v->is_argument()&&i<read_level){
+                                VariableSelector::record_paramRead(v, cg_context, read_level-i);
+                            }
+                            VariableSelector::set_used(v, cg_context);
+                        }
+                    }
+                }
+				if (deref_level > 0) {
+					incr_counter(Bookkeeper::write_dereference_cnts, deref_level);
+				}
+				Bookkeeper::record_volatile_access(var, deref_level, true);
+				PRINT_LOC("make local lhs end")
+				return new Lhs(*var, t, compound_assign);
+			}
+			// restore the effects
+			cg_context.reset_effect_accum(effect_accum);
+			cg_context.reset_effect_stm(effect_stm);
+		}
+		dummy.push_back(var);
+	} while (true);
+    PRINT_LOC("make local lhs fail")
+	assert(0);
+	return 0;
+}
+
 /*
  *
  */

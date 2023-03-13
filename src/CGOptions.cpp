@@ -78,6 +78,7 @@ int CGOptions::pointer_size_ = 0;
 	DEFINE_GETTER_SETTER(std::string, "", f)
 
 ///////////////////////////////////////////////////////////////////////////////
+DEFINE_GETTER_SETTER_BOOL(test_copyPropagation)
 DEFINE_GETTER_SETTER_BOOL(test_introduce_store)
 DEFINE_GETTER_SETTER_BOOL(verbose)
 DEFINE_GETTER_SETTER_BOOL(compute_hash)

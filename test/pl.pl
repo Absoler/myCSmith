@@ -28,6 +28,8 @@ $num=0;
 @targets=();
 @main=();
 $state=0;
+
+$core = `nproc`/2;
 while(my $line=<$file>){
     # print $line;
     if((my $pos=index($line, $target_pat))!=-1){
@@ -66,10 +68,10 @@ close file;
 my $stat;
 
 if($compiler =~ m/gcc/){
-    $stat = system("creduce --tidy --n 6 ./judge_gcc.kb target.c");
+    $stat = system("creduce --tidy --n $core ./judge_gcc.kb target.c");
 }elsif($compiler =~ m/clang/){
-    $stat = system("creduce --tidy --n 6 ./judge_clang.kb target.c");
+    $stat = system("creduce --tidy --n $core ./judge_clang.kb target.c");
 }elsif($compiler =~ m/icc/){
-    $stat = system("creduce --tidy --n 6 ./judge_icc.kb target.c");
+    $stat = system("creduce --tidy --n $core ./judge_icc.kb target.c");
 }
 exit $stat;

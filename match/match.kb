@@ -1,26 +1,25 @@
 #! /bin/bash
 gcc_checks=(
-    /home/patcher/TestPatterns/arg_gcc/Assign_with_logic.cocci
-    /home/patcher/TestPatterns/arg_gcc/assignExprAsArg.cocci
-    /home/patcher/TestPatterns/arithmetic_gcc/div.cocci
-    /home/patcher/TestPatterns/delayAssign_gcc/simpleReturn.cocci
-    /home/patcher/TestPatterns/delayAssign_gcc/struct_assign_and_if.cocci
-    /home/patcher/TestPatterns/delayAssign_gcc/struct_useAfterAssign.cocci
-    /home/patcher/TestPatterns/delayAssign_gcc/union_assignExpr_arg.cocci
-    /home/patcher/TestPatterns/ifMultiCmp_gcc/assign_struct_and_use.cocci
-    /home/patcher/TestPatterns/ifMultiCmp_gcc/both_storeAndUse.cocci
-    /home/patcher/TestPatterns/ifMultiCmp_gcc/compound_assign.cocci
-    /home/patcher/TestPatterns/ifMultiCmp_gcc/decl_union_return.cocci
-    /home/patcher/TestPatterns/ifMultiCmp_gcc/one_assign_and_other.cocci
-    /home/patcher/TestPatterns/ifMultiCmp_gcc/one_assign_and_return.cocci
-    /home/patcher/TestPatterns/ifMultiCmp_gcc/separate_storeAndUse.cocci
-    /home/patcher/TestPatterns/ifMultiCmp_gcc/two_assign_and_return.cocci
-    /home/patcher/TestPatterns/ifRefresh_gcc/parm_deref_assign.cocci
-    /home/patcher/TestPatterns/ifRefresh_gcc/union_assign.cocci
-    /home/patcher/TestPatterns/return_gcc/load_retVal_inAdvance.cocci
-    /home/patcher/TestPatterns/structArg_gcc/structArg.cocci
-    /home/patcher/TestPatterns/structDup_gcc/assign_and_use.cocci
-    /home/patcher/TestPatterns/structDup_gcc/consecutive_assign.cocci 
+    /home/patcher/loadMatchPatterns/arithmetic_gcc/div.cocci
+    /home/patcher/loadMatchPatterns/delayAssign_gcc/assignExprAsArg.cocci
+    /home/patcher/loadMatchPatterns/delayAssign_gcc/simpleReturn.cocci
+    /home/patcher/loadMatchPatterns/delayAssign_gcc/struct_assign_and_if.cocci
+    /home/patcher/loadMatchPatterns/delayAssign_gcc/struct_useAfterAssign.cocci
+    /home/patcher/loadMatchPatterns/ifMultiCmp_gcc/separate_storeAndUse.cocci
+    /home/patcher/loadMatchPatterns/ifMultiCmp_gcc/together_storeAndUse.cocci
+    /home/patcher/loadMatchPatterns/ifMultiCmp_gcc/CompareExpr.cocci
+    /home/patcher/loadMatchPatterns/ifMultiCmp_gcc/assign_struct_and_use.cocci
+    /home/patcher/loadMatchPatterns/ifMultiCmp_gcc/decl_union_return.cocci
+    /home/patcher/loadMatchPatterns/ifMultiCmp_gcc/one_assign_and_other.cocci
+    /home/patcher/loadMatchPatterns/ifMultiCmp_gcc/one_assign_and_return.cocci
+    /home/patcher/loadMatchPatterns/ifMultiCmp_gcc/Assign_with_logic.cocci
+    /home/patcher/loadMatchPatterns/ifRefresh_gcc/union_assign.cocci
+    /home/patcher/loadMatchPatterns/ifRefresh_gcc/parm_deref_assign.cocci
+    /home/patcher/loadMatchPatterns/loadInAdvance/ifReturn.cocci
+    /home/patcher/loadMatchPatterns/return_gcc/load_retVal_inAdvance.cocci
+    /home/patcher/loadMatchPatterns/structArg_gcc/structArg.cocci
+    /home/patcher/loadMatchPatterns/structDup_gcc/assign_and_use.cocci
+    /home/patcher/loadMatchPatterns/structDup_gcc/consecutive_assign.cocci
 )
 icc_checks=(
     arithmetic_icc.cocci 
@@ -44,6 +43,19 @@ matched=()
 unmatched=()
 sum=${#files[*]}
 
+# ----------------------------------------
+#   args[1]: not 0 means add binary check
+#
+#
+# ----------------------------------------
+
+opt_option=
+
+if [ $# -ge 1 ] ; then
+    add_binary_check=$1
+else
+    add_binary_check=0
+fi
 
 for file in ${files[*]} ; do
 # file=2677_gcc-12.1_output.c
@@ -60,7 +72,7 @@ for file in ${files[*]} ; do
 
     if [[ $file =~ "gcc" ]] ; then
         trigger_patterns=() # length == 0, means no match
-        for check in ${test_checks[*]} ; do
+        for check in ${gcc_checks[*]} ; do
             match=0
             echo \>check $check
             res=`timeout 2s spatch -sp_file $check ../patterns/$file -o tmp.c --no-includes`
@@ -78,6 +90,22 @@ for file in ${files[*]} ; do
             desc_val=`cat ./needDescriptCheck.json | jq -r .$check_name` 
             if [ $match -eq 1 ] && [ "$desc_val" != "None" ] && [ -f ../problem/${file%_*}_descript.out ] ; then
                 ./check_desc.py ../problem/${file%_*}_descript.out $desc_val
+                if [ $? -eq 0 ] ; then
+                    match=0
+                fi
+            fi
+
+            if [ $match -eq 1 -a $add_binary_check -ne 0 ] ; then
+                compiler=${file%_*}
+                compiler=${compiler#*_}
+                # echo $compiler
+                if [ ! -d "./test" ] ; then
+                    mkdir test
+                fi
+                cp ../patterns/$file test/output2.c
+                $compiler test/output2.c $opt_option -g -o test/output2
+                python3 /home/patcher/tool.py test/output2.c $check > test/output2.json
+                python3 /home/DFchecker/checker.py test/output2 test/output2.json
                 if [ $? -eq 0 ] ; then
                     match=0
                 fi

@@ -264,13 +264,18 @@ Statement::make_random(CGContext &cg_context,
 	}
 	// XXX: interim ickiness
 	Statement *s = 0;
-
+    bool flag = false;
 	switch (t) {
 	default:
 		assert(!"unknown Statement type");
 		break;
 	case eAssign:
-		s = StatementAssign::make_random(cg_context);
+        if ( CGOptions::test_copyPropagation() && rnd_flipcoin(60) ){
+            s = StatementAssign::make_copyGlobal(cg_context);
+            flag=true;
+        }else{
+            s = StatementAssign::make_random(cg_context);
+        }
 		break;
 	case eBlock:
 		s = Block::make_random(cg_context);
@@ -300,7 +305,7 @@ Statement::make_random(CGContext &cg_context,
 		s = StatementAssign::make_random(cg_context);
 		break;
 	}
-
+    cout<<(flag?"hit":"no")<<endl;
 	ERROR_GUARD(NULL);
 	if (is_compound(t)) {
 		cg_context.blk_depth--;

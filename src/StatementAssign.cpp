@@ -108,6 +108,117 @@ StatementAssign::AssignOpsProbability(const Type* type)
 	return (eAssignOps)(filter.lookup(value));
 }
 
+StatementAssign *
+StatementAssign::make_copyGlobal(CGContext &cg_context, const Type* type, const CVQualifiers* qf, bool asExpression){
+    // decide assignment operator
+	eAssignOps op = eSimpleAssign;
+	// bool stand_alone_assign = false;
+
+	// decide type
+	if (type == NULL) {
+		// stand_alone_assign = true;
+		type = Type::SelectLType(!cg_context.get_effect_context().is_side_effect_free(), op);
+	}
+	assert(!type->is_const_struct_union());
+
+	FactMgr* fm = get_fact_mgr(&cg_context);
+	assert(fm);
+	// pre-generation initializations
+	Lhs *lhs = NULL;
+	Expression *e = NULL;
+	Effect running_eff_context(cg_context.get_effect_context());
+	Effect rhs_accum, lhs_accum;
+	CGContext rhs_cg_context(cg_context, running_eff_context, &rhs_accum);
+	CVQualifiers qfer;
+	if (qf) qfer = *qf;
+
+	if (need_no_rhs(op)) {
+		e = Constant::make_int(1);
+		// if we are creating standalone statements like x++, any qualifers fit
+		if (qf == NULL) qfer.wildcard = true;
+	}
+	else if (CGOptions::strict_volatile_rule()) {
+		if (type->is_volatile_struct_union())
+			return NULL;
+
+		e = Expression::make_random(rhs_cg_context, type, qf, false, false, eLhs, eGlobalVar);
+		ERROR_GUARD_AND_DEL1(NULL, e);
+		if (!qf) {
+			qfer = e->get_qualifiers();
+			// lhs should not has "const" qualifier
+			qfer.accept_stricter = true;
+		}
+
+		
+		running_eff_context.add_effect(rhs_accum);
+		// if the rhs is volatile, almost came from dereferencing a pointer,
+		// then make sure lhs is not a vol
+		if (qfer.get_volatiles().size() && qfer.is_volatile())
+			qfer.set_volatile(false);
+	}
+	else {
+		e = Expression::make_random(rhs_cg_context, type, qf, false, false, eLhs, eGlobalVar);
+		ERROR_GUARD_AND_DEL1(NULL, e);
+		if (!qf) {
+			qfer = e->get_qualifiers();
+			// lhs should not has "const" qualifier
+			qfer.accept_stricter = true;
+		}
+
+		// for compound assignment, generate LHS in the effect context of RHS
+		if (op != eSimpleAssign) {
+			running_eff_context.add_effect(rhs_accum);
+			// for now, just use non-volatile as LHS for compound assignments
+			qfer.set_volatile(false);
+		}
+	}
+	cg_context.merge_param_context(rhs_cg_context, true);
+	running_eff_context.write_var_set(rhs_accum.get_lhs_write_vars());
+
+	CGContext lhs_cg_context(cg_context, running_eff_context, &lhs_accum);
+	lhs_cg_context.get_effect_stm() = rhs_cg_context.get_effect_stm();
+	lhs_cg_context.curr_rhs = e;
+
+	bool prev_flag = CGOptions::match_exact_qualifiers(); // keep a copy of previous flag
+	if (qf) CGOptions::match_exact_qualifiers(true);      // force exact qualifier match when selecting vars
+	if (CGOptions::strict_float()) {
+		lhs = Lhs::make_localLhs(lhs_cg_context, &e->get_type(), &qfer, op != eSimpleAssign, need_no_rhs(op), asExpression);
+	}
+	else {
+		lhs = Lhs::make_localLhs(lhs_cg_context, type, &qfer, op != eSimpleAssign, need_no_rhs(op), asExpression);
+	}
+	if (qf) CGOptions::match_exact_qualifiers(prev_flag); // restore flag
+	ERROR_GUARD_AND_DEL2(NULL, e, lhs);
+
+	// typecast, if needed.
+	e->check_and_set_cast(type);
+	if (CGOptions::ccomp() && lhs->get_var()->isBitfield_) {
+		e->cast_type = type;
+	}
+	// e can be of float type. So, we reset its
+	if ((lhs->get_var()->type->get_base_type()->is_float() || e->get_type().get_base_type()->is_float())
+	    && !StatementAssign::AssignOpWorksForFloat(op)) {
+		op = eSimpleAssign;
+	}
+
+	if (CompatibleChecker::compatible_check(e, lhs)) {
+		Error::set_error(COMPATIBLE_CHECK_ERROR);
+		delete e;
+		delete lhs;
+		return NULL;
+	}
+
+	cg_context.merge_param_context(lhs_cg_context, true);
+	ERROR_GUARD_AND_DEL2(NULL, e, lhs);
+	StatementAssign *stmt_assign = make_possible_compound_assign(cg_context, type, *lhs, op, *e);
+	// if(lhs->get_var()->name=="l_166"){
+	// 	vector<const Variable*> tars=FactPointTo::get_pointees_under_level(lhs->get_var(),1,fm->global_facts);
+	// 	printf("3");
+	// }
+	ERROR_GUARD_AND_DEL2(NULL, e, lhs);
+	return stmt_assign;
+
+}
 /*
  *
  */

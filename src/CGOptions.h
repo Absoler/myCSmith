@@ -53,7 +53,7 @@ using namespace std;
 #define CGOPTIONS_DEFAULT_MAX_STRUCT_FIELDS	(10)
 #define CGOPTIONS_DEFAULT_MAX_UNION_FIELDS	(5)
 #define CGOPTIONS_DEFAULT_MAX_NESTED_STRUCT_LEVEL	(5)
-#define CGOPTIONS_DEFAULT_MAX_INDIRECT_LEVEL (5)
+#define CGOPTIONS_DEFAULT_MAX_INDIRECT_LEVEL (3)
 #define CGOPTIONS_DEFAULT_MAX_ARRAY_DIMENSIONS	(3)
 #define CGOPTIONS_DEFAULT_MAX_ARRAY_LENGTH_PER_DIMENSION (10)
 #define CGOPTIONS_DEFAULT_MAX_ARRAY_LENGTH	(256)
@@ -70,6 +70,9 @@ using namespace std;
  */
 class CGOptions {
 public:
+    static bool test_copyPropagation(void);
+    static bool test_copyPropagation(bool p);
+
     static bool test_introduce_store(void);
     static bool test_introduce_store(bool p);
 
@@ -490,6 +493,7 @@ private:
 	static void parse_string_options(string vname, vector<std::string> &v);
 
 	// Until I do this right, just make them all static.
+    static bool test_copyPropagation_;
     static bool test_introduce_store_;
 	static bool verbose_;
 	static bool	compute_hash_;

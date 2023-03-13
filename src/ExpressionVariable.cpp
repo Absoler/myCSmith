@@ -55,7 +55,7 @@
  *
  */
 ExpressionVariable *
-ExpressionVariable::make_random(CGContext &cg_context, const Type* type, const CVQualifiers* qfer, bool as_param, bool as_return, map<int,int> *use_counter)
+ExpressionVariable::make_random(CGContext &cg_context, const Type* type, const CVQualifiers* qfer, bool as_param, bool as_return, map<int,int> *use_counter, genGuide guide)
 {
 	// use_counter belong to the func which chooses this current var as an arg
 	DEPTH_GUARD_BY_TYPE_RETURN(dtExpressionVariable, NULL);
@@ -69,11 +69,34 @@ ExpressionVariable::make_random(CGContext &cg_context, const Type* type, const C
 
 	ExpressionVariable *ev = 0;
 	do {
+        eVariableScope scope = MAX_VAR_SCOPE;
+        if(guide == eGlobalVar && rnd_flipcoin(80)){
+            /*
+                if always set `eGlobal`, dead loop will happen for seed = 1660405260
+                
+                when
+                1) GlobalList only has one suitable var whose need deref and use
+                2) this var's pointToSet is invalid, can't pass 
+                    `FactPointTo::opportunistic_validate`
+                3) this var is a collective array
+
+                based on 1), given to "artificially increase the odds of dereferencing a pointer",
+                the arrayVar will be chosen, and itemized in `choose_ok_var`, the son array will
+                be saved in `invalid_vars`, however, when next time the father array is chosen as
+                ok_var, it won't be filtered by some son array.
+
+                So for avoidance of add extra check of invalid_var's collective, (maybe some 
+                unexpected problem) we just randomize our guide policy
+            */
+            PRINT_LOC("make global rval start")
+            scope = eGlobal;
+        }
 		const Variable* var = 0;
 		// try to use one of must_read_vars in CGContext
+        PRINT_LOC()
 		var = VariableSelector::select_must_use_var(Effect::READ, cg_context, type, qfer);
 		if (var == NULL) {
-			var = VariableSelector::select(Effect::READ, cg_context, type, qfer, dummy, eFlexible);
+			var = VariableSelector::select(Effect::READ, cg_context, type, qfer, dummy, eFlexible, scope);
 		}
 		ERROR_GUARD(NULL);
 		if (!var)
@@ -90,7 +113,7 @@ ExpressionVariable::make_random(CGContext &cg_context, const Type* type, const C
 			&& (var->is_argument() || var->is_local())) {
 			continue;
 		}
-
+        PRINT_LOC()
 		// forbid a escaping pointer to take the address of an argument or a local variable
 		int indirection = var->type->get_indirect_level() - type->get_indirect_level();
 		if(indirection<0){
@@ -102,9 +125,7 @@ ExpressionVariable::make_random(CGContext &cg_context, const Type* type, const C
 		}
 		int valid = FactPointTo::opportunistic_validate(var, type, fm->global_facts);
 		
-		if(var->name=="g_103"&&as_param){
-			printf("1");
-		}
+		PRINT_LOC()
 		// if this var will be an arg, check whether it contain global that will be read/written in target function (with the same deref-level) 
 		VariableSet used_globals_in_param;	// these vars will be read/written if this var is qualified for an arg
 		if(as_param && use_counter!=NULL && valid){
@@ -115,7 +136,7 @@ ExpressionVariable::make_random(CGContext &cg_context, const Type* type, const C
             // if(CGOptions::test_introduce_store()){
                 
             // }else{
-
+            PRINT_LOC()
                 map<int, VariableSet> varsMap=FactPointTo::get_pointees_in_range(var, fm->global_facts, indirect, end_level);
                 for(int i=1; i<=end_level&&valid; i++){
                     if(use_counter->find(i)==use_counter->end()){
@@ -138,7 +159,7 @@ ExpressionVariable::make_random(CGContext &cg_context, const Type* type, const C
             // }
 
 		}
-		
+		PRINT_LOC("%s %d", var->name.c_str(), valid)
 		if (valid) {
 			ExpressionVariable tmp(*var, type);
 			if (tmp.visit_facts(fm->global_facts, cg_context)) {
@@ -147,6 +168,7 @@ ExpressionVariable::make_random(CGContext &cg_context, const Type* type, const C
 				if (var->name=="g_1343.f3.f1") { 
 					get = true;
 				}
+                PRINT_LOC()
 				int indirect = tmp.get_indirect_level();
 				cg_context.curr_blk = cg_context.get_current_block();
 
@@ -188,6 +210,7 @@ ExpressionVariable::make_random(CGContext &cg_context, const Type* type, const C
                 break;  //success
                 
 			}else {
+                PRINT_LOC("variable")
 				cg_context.reset_effect_accum(eff_accum);
 				cg_context.reset_effect_stm(eff_stmt);
 			}
@@ -204,6 +227,9 @@ ExpressionVariable::make_random(CGContext &cg_context, const Type* type, const C
 		Bookkeeper::record_address_taken(ev->get_var());
 	}
 	Bookkeeper::record_volatile_access(ev->get_var(), deref_level, false);
+    if(guide == eGlobalVar){
+        PRINT_LOC("make global rval done")
+    }
 	return ev;
 }
 

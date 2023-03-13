@@ -379,7 +379,11 @@ Block::Output(std::ostream &out, FactMgr* fm, int indent) const
 
 	set<const Variable*> liveVars=func->getLiveVars();
 	OutputVariableList(local_vars, out, indent);
-	OutputStatementList(stms, out, fm, indent);
+
+    output_tab(out, indent);
+    out << "// end of local_vars declarations for block: " << stm_id << endl;
+	
+    OutputStatementList(stms, out, fm, indent);
 
 	if (CGOptions::depth_protect()) {
 		out << "DEPTH--;" << endl;

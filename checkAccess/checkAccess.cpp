@@ -324,8 +324,9 @@ VOID hack_getInfo(RTN rtn, VOID* v){
 VOID record_Access(ADDRINT ip, ADDRINT start, UINT32 len) { 
     Access access=std::make_pair(start, len);
     // printf("%lx\n", start);
+    // printf("actual access %lx %u\n", start, len);
     if(isGlobal(access)){
-        printf("actual access %lx\n", start);
+        printf("actual access %lx %u\n", start, len);
         actual_counter[access]++;
         if(instOfAccess[access].find(ip)==instOfAccess[access].end()){
             // we don't know this inst load this content before
@@ -351,7 +352,7 @@ VOID hack_targetFunc(RTN rtn, VOID* v){
                 if(isWrite){
                     INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)record_Access, IARG_INST_PTR, IARG_MEMORYWRITE_EA, IARG_MEMORYWRITE_SIZE, IARG_END);
                 }else{
-                    INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)record_Access, IARG_INST_PTR, IARG_MEMORYREAD_EA, IARG_MEMORYWRITE_SIZE, IARG_END);
+                    INS_InsertCall(ins, IPOINT_BEFORE, (AFUNPTR)record_Access, IARG_INST_PTR, IARG_MEMORYREAD_EA, IARG_MEMORYREAD_SIZE, IARG_END);
                 }
             }
         }    

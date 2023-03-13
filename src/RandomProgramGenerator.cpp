@@ -372,7 +372,10 @@ main(int argc, char **argv)
 	CGOptions::avoid_signed_overflow(false);
 	printf("\n\ncurrent seed: %lu\n", g_Seed);
 	for (int i=1; i<argc; i++) {
-
+        if (strcmp (argv[i], "--copyPropagation") == 0 ){
+            CGOptions::test_copyPropagation(true);
+            continue;
+        }
         if (strcmp (argv[i], "--store") == 0 ){
             CGOptions::test_introduce_store(true);
             continue;
