@@ -203,47 +203,12 @@ OutputMgr::OutputMain(std::ostream &out)
 	out<<"getInfo((unsigned long)varInfos, global_cnt, (unsigned long)accesses, access_cnt);"<<endl;	//transfer varInfos and accessInfos to pintool
 
 	
-	// if (CGOptions::blind_check_global()) {
-	// 	ExtensionMgr::OutputFirstFunInvocation(out, invoke);
-	// 	std::vector<Variable *>& vars = *VariableSelector::GetGlobalVariables();
-	// 	for (size_t i=0; i<vars.size(); i++) {
-	// 		vars[i]->output_value_dump(out, "checksum ", 1);
-	// 	}
-	// }
-	// else {
-	// 	// set up a global variable that controls if we print the hash value after computing it for each global
-	// 	out << "    int print_hash_value = 0;" << endl;
-	// 	if (CGOptions::accept_argc()) {
-	// 		out << "    if (argc == 2 && strcmp(argv[1], \"1\") == 0) print_hash_value = 1;" << endl;
-	// 	}
-
-	// 	out << "    platform_main_begin();" << endl;
-	// 	if (CGOptions::compute_hash()) {
-	// 		out << "    crc32_gentab();" << endl;
-	// 	}
-
-	// 	ExtensionMgr::OutputFirstFunInvocation(out, invoke);
-
 	// #if 0
 		out << "    ";
 		invoke->Output(out);
 		out << ";" << endl;
 	// #endif
-	// 	// resetting all global dangling pointer to null per Rohit's request
-	// 	if (!CGOptions::dangling_global_ptrs()) {
-	// 		OutputPtrResets(out, GetFirstFunction()->dead_globals);
-	// 	}
-
-	// 	if (CGOptions::step_hash_by_stmt())
-	// 		OutputMgr::OutputHashFuncInvocation(out, 1);
-	// 	else
-	// 		HashGlobalVariables(out);
-	// 	if (CGOptions::compute_hash()) {
-	// 		out << "    platform_main_end(crc32_context ^ 0xFFFFFFFFUL, print_hash_value);" << endl;
-	// 	} else {
-	// 		out << "    platform_main_end(0,0);" << endl;
-	// 	}
-	// }
+	
 	outputln(out);
 	VariableSelector::generate_setVarSide(out);
 	outputln(out);

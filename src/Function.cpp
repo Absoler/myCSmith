@@ -915,6 +915,9 @@ void
 Function::generate_setReadCnt(ostream& out){
 	for(auto p:Function::totalCounter){
 		const Variable* var=p.first;
+        if(CGOptions::test_copyPropagation() && !VariableSelector::inCopyVec(var)){
+            continue;
+        }
 		int cnt=p.second;
 		if(var->isArray){
 			const ArrayVariable* av=dynamic_cast<const ArrayVariable*>(var);

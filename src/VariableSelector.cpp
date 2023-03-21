@@ -76,6 +76,7 @@ using namespace std;
 // static variables
 vector<Variable *> VariableSelector::AllVars;
 vector<Variable *> VariableSelector::GlobalList;
+vector<Variable *> VariableSelector::copyGlobals;
 vector<Variable *> VariableSelector::GlobalNonvolatilesList;
 map<const Variable*, int> VariableSelector::load_count;
 
@@ -157,6 +158,18 @@ RandomParamName(void) {
     return gensym("p_");
 }
 
+bool
+VariableSelector::inCopyVec(const Variable* var){
+    bool in = false;
+    for(auto it = copyGlobals.begin(); it!=copyGlobals.end(); ++it){
+        if((*it)==var || (*it)->get_collective() == var){
+            in = true;
+            break;
+        }
+    }
+    
+    return in;
+}
 // -------------------------------------------------------------
 /*
  * generate a new variable and store into AllVars
@@ -503,6 +516,10 @@ VariableSelector::setvarArray(ArrayMgr* mgr, vector<vector<int>> &index_values, 
 
 //zkb
 void VariableSelector::set_used(const Variable *var, CGContext& context, bool isReturn) {
+    /* only restrict choosen var when detecting specific prolem*/
+    // if(CGOptions::test_copyPropagation() && !inCopyVec(var)){
+    //     return;
+    // }
     //find the used target in GlobalList by name, and set its used = true
     bool get=false;
     if(var->name=="g_846"){
@@ -771,7 +788,8 @@ void VariableSelector::record_paramStore(const Variable* var, const CGContext& c
 
 void VariableSelector::generate_setGlobalInfos(ostream &out){
     std::set<string> names;
-    for(Variable *v:GlobalList){
+    const vector<Variable*> &globals = (CGOptions::test_copyPropagation()? copyGlobals : GlobalList);
+    for(Variable *v:globals){
         names.insert(v->name);
     }
     std::vector<string> infos;
@@ -785,7 +803,8 @@ void VariableSelector::generate_setGlobalInfos(ostream &out){
 
 void VariableSelector::generate_setVarSide(ostream &out){
     std::set<string> names;
-    for(Variable *v:GlobalList){
+    const vector<Variable*> globals = (CGOptions::test_copyPropagation()?copyGlobals:GlobalList);
+    for(Variable *v:globals){
         string name;
         if(v->type->eType==eSimple || v->type->eType==ePointer || v->isArray){
             name="(unsigned long)"+v->name;
@@ -981,11 +1000,6 @@ VariableSelector::choose_var(vector<Variable *> vars,
         if (is_variable_in_set(invalid_vars, *i)) {
             continue;
         }
-        //zkb
-        //check normal integer
-        if ((*i)->is_global() && access == Effect::READ && (*i)->used) {
-            continue;
-        }
 
         //-1 means ref(&), >0 means deref(*)
         int deref_level = (*i)->type->get_indirect_level() - type->get_indirect_level();
@@ -1001,6 +1015,11 @@ VariableSelector::choose_var(vector<Variable *> vars,
         bool used=false;
         for(int level=0; level<=read_level; level++){
             for(const Variable* var:targets[level]){
+                /* only restrict choosen var when detecting specific prolem*/
+                if(CGOptions::test_copyPropagation() && (!inCopyVec(var) && !inCopyVec(var->get_top_container()) && !inCopyVec(var->get_collective()) )){
+                    continue;
+                }
+
                 /* use check_var_used()*/
 
                 bool isSouce=(var==(*i));
@@ -1013,35 +1032,6 @@ VariableSelector::choose_var(vector<Variable *> vars,
         }
         // assert(targets.size()>0);    // shouldn't happen
 
-        /* don't need restrict loop now*/
-        //if in a loop and one of targets is(or part of) global, then this var will be abandoned even if its used=false
-        // bool global_inLoop=false;
-        // bool inLoop=cg_context.get_current_block()->looping;   
-        // if(inLoop){
-        //     for(const Variable* var:targets){
-        //         if(var->is_global()||(var->is_field_var()&&var->field_var_of->is_global())){
-        //             global_inLoop=true;
-        //             break;
-        //         }
-        //     }
-        // }
-        // if(global_inLoop){
-        //     // continue;
-        // }
-        //
-        // //check pointee
-        // if(deref_level>0){
-        //     pointee_vars=FactPointTo::merge_pointees_of_pointer((*i),deref_level,fm->global_facts);
-        //     bool used=false;
-        //     for(const Variable* var:pointee_vars){
-        //         if(var->is_global() && access==Effect::READ && var->used ){
-        //             used=true;
-        //             break;
-        //         }
-        //     }
-        //     if(used)
-        //         continue;
-        // }
 
         if (is_eligible_var((*i), deref_level, access, cg_context)) {
             // Otherwise, this is an acceptable choice.
@@ -1164,6 +1154,16 @@ VariableSelector::GenerateNewGlobal(Effect::Access access, const CGContext &cg_c
     }
     var_created = true;
     return var;
+}
+
+void
+VariableSelector::addToCopyVec(Variable* var){
+    copyGlobals.push_back(var);
+}
+Variable*
+VariableSelector::genNewGlobalWrapper(Effect::Access access, const CGContext &cg_context, const Type *t,
+                                    const CVQualifiers *qfer) {
+    return GenerateNewGlobal(access, cg_context, t, qfer);
 }
 
 Variable *

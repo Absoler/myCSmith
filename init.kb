@@ -57,7 +57,9 @@ done
 if [ $# -ge 4 ] ; then
     if [ $4 -eq 1 ] ; then
         # build csmith
-        mkdir ./build
+        if [ ! -d "./build" ] ; then
+            mkdir ./build
+        fi
         cd build
         cmake ..
         make -j 4

@@ -270,9 +270,11 @@ Statement::make_random(CGContext &cg_context,
 		assert(!"unknown Statement type");
 		break;
 	case eAssign:
-        if ( CGOptions::test_copyPropagation() && rnd_flipcoin(60) ){
+        if ( CGOptions::test_copyPropagation() && rnd_flipcoin(25) ){
             s = StatementAssign::make_copyGlobal(cg_context);
-            flag=true;
+            if (!s){
+                s = StatementAssign::make_random(cg_context);
+            }
         }else{
             s = StatementAssign::make_random(cg_context);
         }
@@ -395,6 +397,7 @@ Statement::Statement(eStatementType st, Block* b)
 {
 	stm_id = Statement::sid;
 	Statement::sid++;
+    testCopy = false;
 }
 
 /*

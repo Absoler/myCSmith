@@ -204,11 +204,7 @@ Expression::make_random(CGContext &cg_context, const Type* type, const CVQualifi
 		e = Constant::make_random(type);
 		break;
 	case eVariable:
-        if (guide == eGlobalVar){
-            e = ExpressionVariable::make_random(cg_context, type, qfer, false, false, NULL, eGlobalVar);
-        }else{
-		    e = ExpressionVariable::make_random(cg_context, type, qfer);
-        }
+		e = ExpressionVariable::make_random(cg_context, type, qfer);
 		break;
 	case eFunction:
 		e = ExpressionFuncall::make_random(cg_context, type, qfer);

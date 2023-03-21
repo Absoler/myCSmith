@@ -124,6 +124,9 @@ public:
 	static const Variable* find_var_by_name(string name);
 
 	static bool check_var_used(const Variable* var, bool isSource=false);	//zkb
+    static bool inCopyVec(const Variable* var);
+    static Variable* genNewGlobalWrapper(Effect::Access access, const CGContext &cg_context, const Type* t, const CVQualifiers* qfer);
+    static void addToCopyVec(Variable* var);
 private:
 	static ArrayVariable* create_array_and_itemize(Block* blk, string name, const CGContext& cg_context, const Type* t, const Expression* init, const CVQualifiers* qfer);
 
@@ -189,6 +192,8 @@ private:
 	//record global vars read in for-block
 	static set<const Variable*> forVars;
 
+    // globals used to clone, only restricted these's use
+    static vector<Variable *> copyGlobals;
 };
 
 void OutputGlobalVariables(std::ostream &);

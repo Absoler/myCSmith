@@ -192,6 +192,8 @@ public:
 
 	UseCounter use_counter;	// record read times in this statement
 	CallCounter call_counter;	// record call-edge in this statement
+
+    bool testCopy;
 protected:
 	Statement(eStatementType st, Block* parent);
 

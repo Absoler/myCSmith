@@ -233,6 +233,71 @@ ExpressionVariable::make_random(CGContext &cg_context, const Type* type, const C
 	return ev;
 }
 
+ExpressionVariable *
+ExpressionVariable::make_new(CGContext &cg_context, const Type* type, const CVQualifiers* qfer, bool as_param, bool as_return, map<int,int> *use_counter){
+    DEPTH_GUARD_BY_TYPE_RETURN(dtExpressionVariable, NULL);
+	Function *curr_func = cg_context.get_current_func();
+	FactMgr* fm = get_fact_mgr_for_func(curr_func);
+
+    // save current effects, in case we need to reset
+	Effect eff_accum = cg_context.get_accum_effect();
+	Effect eff_stmt = cg_context.get_effect_stm();
+
+    ExpressionVariable *ev = 0;
+
+    const Type *ntype = Type::random_type_from_type(type);
+    Variable *var = VariableSelector::genNewGlobalWrapper(Effect::READ, cg_context, ntype, qfer);
+    if(!var){
+        return ev;
+    }
+    
+    int indirection = var->type->get_indirect_level() - type->get_indirect_level();
+    int valid = FactPointTo::opportunistic_validate(var, type, fm->global_facts);
+    if(!valid){
+        return ev;
+    }
+
+    ExpressionVariable tmp(*var, type);
+    if(!tmp.visit_facts(fm->global_facts, cg_context)){
+        // need reset
+        cg_context.reset_effect_accum(eff_accum);
+        cg_context.reset_effect_stm(eff_stmt);
+        return ev;
+    }
+
+    ev = tmp.get_indirect_level() == 0 ? new ExpressionVariable(*var) : new ExpressionVariable(*var, type);
+    
+    cg_context.curr_blk = cg_context.get_current_block();
+
+    VariableSelector::addToCopyVec(var);
+    
+    if(!CGOptions::test_introduce_store()){
+        map<int, VariableSet> targets=FactPointTo::get_pointees_under_level(var,indirection,fm->global_facts);
+        
+        for(int i=0; i<=indirection; i++){
+            for(const Variable* var:targets[i]){
+                if(var->is_argument()){
+                    VariableSelector::record_paramRead(var, cg_context, indirection-i, as_return); //这个地方添加次数可能过多导致可以用的参数也不能用了
+                }
+                VariableSelector::set_used(var, cg_context, as_return);
+            }
+        }
+    
+    }
+
+    // statistics
+    int deref_level = ev->get_indirect_level();
+	if (deref_level > 0) {
+		incr_counter(Bookkeeper::read_dereference_cnts, deref_level);
+	}
+	if (deref_level < 0) {
+		Bookkeeper::record_address_taken(ev->get_var());
+	}
+	Bookkeeper::record_volatile_access(ev->get_var(), deref_level, false);
+
+    
+    return ev;
+}
 /*
  *
  */

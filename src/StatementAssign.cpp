@@ -141,7 +141,10 @@ StatementAssign::make_copyGlobal(CGContext &cg_context, const Type* type, const 
 		if (type->is_volatile_struct_union())
 			return NULL;
 
-		e = Expression::make_random(rhs_cg_context, type, qf, false, false, eLhs, eGlobalVar);
+		e = ExpressionVariable::make_new(cg_context, type, qf);
+        if (!e){
+            return nullptr;
+        }
 		ERROR_GUARD_AND_DEL1(NULL, e);
 		if (!qf) {
 			qfer = e->get_qualifiers();
@@ -157,7 +160,10 @@ StatementAssign::make_copyGlobal(CGContext &cg_context, const Type* type, const 
 			qfer.set_volatile(false);
 	}
 	else {
-		e = Expression::make_random(rhs_cg_context, type, qf, false, false, eLhs, eGlobalVar);
+		e = ExpressionVariable::make_new(rhs_cg_context, type, qf);
+        if (!e){
+            return nullptr;
+        }
 		ERROR_GUARD_AND_DEL1(NULL, e);
 		if (!qf) {
 			qfer = e->get_qualifiers();
@@ -165,12 +171,6 @@ StatementAssign::make_copyGlobal(CGContext &cg_context, const Type* type, const 
 			qfer.accept_stricter = true;
 		}
 
-		// for compound assignment, generate LHS in the effect context of RHS
-		if (op != eSimpleAssign) {
-			running_eff_context.add_effect(rhs_accum);
-			// for now, just use non-volatile as LHS for compound assignments
-			qfer.set_volatile(false);
-		}
 	}
 	cg_context.merge_param_context(rhs_cg_context, true);
 	running_eff_context.write_var_set(rhs_accum.get_lhs_write_vars());
@@ -182,10 +182,10 @@ StatementAssign::make_copyGlobal(CGContext &cg_context, const Type* type, const 
 	bool prev_flag = CGOptions::match_exact_qualifiers(); // keep a copy of previous flag
 	if (qf) CGOptions::match_exact_qualifiers(true);      // force exact qualifier match when selecting vars
 	if (CGOptions::strict_float()) {
-		lhs = Lhs::make_localLhs(lhs_cg_context, &e->get_type(), &qfer, op != eSimpleAssign, need_no_rhs(op), asExpression);
+		lhs = Lhs::make_random(lhs_cg_context, &e->get_type(), &qfer, op != eSimpleAssign, need_no_rhs(op), asExpression);
 	}
 	else {
-		lhs = Lhs::make_localLhs(lhs_cg_context, type, &qfer, op != eSimpleAssign, need_no_rhs(op), asExpression);
+		lhs = Lhs::make_random(lhs_cg_context, type, &qfer, op != eSimpleAssign, need_no_rhs(op), asExpression);
 	}
 	if (qf) CGOptions::match_exact_qualifiers(prev_flag); // restore flag
 	ERROR_GUARD_AND_DEL2(NULL, e, lhs);
@@ -216,6 +216,7 @@ StatementAssign::make_copyGlobal(CGContext &cg_context, const Type* type, const 
 	// 	printf("3");
 	// }
 	ERROR_GUARD_AND_DEL2(NULL, e, lhs);
+    stmt_assign->testCopy = true;
 	return stmt_assign;
 
 }
@@ -591,6 +592,13 @@ StatementAssign::Output(std::ostream &out, FactMgr* /*fm*/, int indent) const
 	output_tab(out, indent);
 	OutputAsExpr(out);
 	out << ";";
+    if(CGOptions::test_copyPropagation()){
+        if (testCopy){
+            out<<" // test Copy";
+        }else{
+            out<<" // normal assign";
+        }
+    }
 	outputln(out);
 }
 
