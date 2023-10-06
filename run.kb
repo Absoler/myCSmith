@@ -43,7 +43,7 @@ do
             cp runtime/output2.c compileFail/${cnt}output2.c
             break
         fi 
-        timeout -s SIGTERM 5s $pin_root/pin -t checkAccess/obj-intel64/checkAccess.so -- runtime/output2 $test_type func 1>/dev/null
+        timeout -s SIGTERM 5s $pin_root/pin -t checkAccess/obj-intel64/checkAccess.so -- runtime/output2 $test_type func ./ 1>/dev/null
         ret=$?
         if [ $ret -eq 134 ] ; then
             cp runtime/output2.c pinErr/${cnt}output2.c

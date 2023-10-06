@@ -23,6 +23,7 @@ using std::pair;
 #define MAX_ACCESS_NUM 2000
 
 string targetFuncPrefix;
+string result_file_prefix;
 bool isWrite;
 FILE* outfile;
 FILE* resfile;
@@ -473,13 +474,14 @@ INT32 Usage(){
 
 
 int main(int argc, char* argv[]){
-    isWrite = (argv[argc-2][0]=='0'?false:true);
-    targetFuncPrefix=argv[argc-1];
-    printf("target: %s\n", targetFuncPrefix.c_str());
+    isWrite = (argv[argc-3][0]=='0'?false:true);
+    targetFuncPrefix=argv[argc-2];
+    result_file_prefix = argv[argc-1];
+    printf("target: %s %d\n", targetFuncPrefix.c_str(), argc);
     PIN_InitSymbols();
-    outfile=fopen("checkAccess.out", "w");
-    resfile=fopen("result.out", "w");
-    descriptFile=fopen("descript.out", "w");
+    outfile=fopen((result_file_prefix + "checkAccess.out").c_str(), "w");
+    resfile=fopen((result_file_prefix + "result.out").c_str(), "w");
+    descriptFile=fopen((result_file_prefix + "descript.out").c_str(), "w");
     if(PIN_Init(argc, argv)) return Usage();
 
     RTN_AddInstrumentFunction(hack_getInfo, 0);

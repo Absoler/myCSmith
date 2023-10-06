@@ -10,5 +10,5 @@ else
     compiler=clang
 fi
 $compiler output2.c -gdwarf-4 $opt_option  -w -o output2 -lpthread
-$pin_root/pin -t ../checkAccess/obj-intel64/checkAccess.so -- ./output2 $test_type func
+$pin_root/pin -t ../checkAccess/obj-intel64/checkAccess.so -- ./output2 $test_type func ./
 objdump -dl output2 > disas

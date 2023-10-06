@@ -10,8 +10,19 @@ fi
 
 compiler=$1
 cnt=$2
+if [ $# -ge 3 ]; then
+    cache_prefix=$3
+else
+    cache_prefix=./
+fi
 
-cp checkAccess.out problem/${cnt}_${compiler}_checkAccess.out
-cp runtime/output2.c problem/${cnt}_${compiler}_output.c
-cp descript.out problem/${cnt}_${compiler}_descript.out
-objdump -d runtime/output2 > problem/${cnt}_${compiler}_output.asm
+if [ $# -ge 4 ]; then
+    id=$4
+else
+    id=2
+fi
+
+cp ${cache_prefix}/checkAccess.out problem/${cnt}_${compiler}_checkAccess.out
+cp runtime/output${id}.c problem/${cnt}_${compiler}_output.c
+cp ${cache_prefix}descript.out problem/${cnt}_${compiler}_descript.out
+objdump -d runtime/output${id} > problem/${cnt}_${compiler}_output.asm
