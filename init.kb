@@ -40,6 +40,9 @@ done
 for file in ${py_scripts[*]} ; do
     sed "s%^\(root_dir=\).*%\1\"`pwd`\"%" $file -i.bak
 done
+for file in ${pl_scripts[*]} ; do
+    sed "s%^\(\$root_dir=\).*%\1\"`pwd`\";%" $file -i.bak
+done
 
 # set optimization option
 for file in ${kb_scripts[*]} ; do

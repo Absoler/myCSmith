@@ -3,7 +3,8 @@
     args[0] is the orginal case file to be reduced, and reduction won't modify it
     args[1] is the compiler we use
 =cut
-
+$root_dir="/home/csmith_delayAssign_O2";
+use Cwd;
 $len=scalar @ARGV;
 $src_file="output2.c";
 if($len>=1){
@@ -13,9 +14,9 @@ $compiler="gcc-12.1";
 if($len>=2){
     $compiler=$ARGV[1];
 }
-$target_file="target.c";
-$define_file="define.c";
-$main_file="main.c";
+$target_file="$root_dir/test/target.c";
+$define_file="$root_dir/test/define.c";
+$main_file="$root_dir/test/main.c";
 
 $target_pat="FUNCTIONS";
 $target_start=-1;
@@ -65,13 +66,18 @@ open $file, ">", $main_file;
 print $file @main;
 close file;
 
+if (Cwd::abs_path(getcwd()) ne "$root_dir/test") {
+    system("cp $root_dir/test/target.c ./target.c");
+}
 my $stat;
-
 if($compiler =~ m/gcc/){
-    $stat = system("creduce --tidy --n $core ./judge_gcc.kb target.c");
+    $stat = system("creduce --tidy --n $core $root_dir/test/judge_gcc.kb target.c");
 }elsif($compiler =~ m/clang/){
-    $stat = system("creduce --tidy --n $core ./judge_clang.kb target.c");
+    $stat = system("creduce --tidy --n $core $root_dir/test/judge_clang.kb target.c");
 }elsif($compiler =~ m/icc/){
-    $stat = system("creduce --tidy --n $core ./judge_icc.kb target.c");
+    $stat = system("creduce --tidy --n $core $root_dir/test/judge_icc.kb target.c");
+}
+if (Cwd::abs_path(getcwd()) ne "$root_dir/test") {
+    system("mv target.c $root_dir/test/")
 }
 exit $stat;

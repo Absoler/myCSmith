@@ -1,0 +1,35 @@
+#!/bin/bash
+
+root_dir=
+opt_option=
+pin_root=
+
+
+if [ $# -lt 3 ] ; then
+    echo "need 3 arguments,
+1) src file need reduced (absolute path)
+2) compiler option (0, 1, 2)
+3) output file (absolute path)
+"
+    exit
+fi
+
+if [ $2 == 0 ] ; then
+    compiler=gcc-12.1
+elif [ $2 == 1 ] ; then
+    compiler=icc
+else 
+    compiler=clang
+fi
+echo $compiler
+rm $root_dir/test/target.c $root_dir/test/define.c $root_dir/test/main.c
+dir=`mktemp -d`
+cd $dir
+cp $1 output2.c
+$root_dir/test/shell.kb $2
+cp descript.out $root_dir/test/descript.old
+$root_dir/test/pl.pl output2.c $compiler
+cp $root_dir/test/define.c full.c
+cat $root_dir/test/target.c >> full.c
+cat $root_dir/test/main.c >> full.c
+mv full.c $3
