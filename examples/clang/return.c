@@ -36,7 +36,7 @@ int g_4 = 1L;
 int g_20[5] = {0x70E81DE9L,0x70E81DE9L,0L,0x70E81DE9L,0x70E81DE9L};
 struct S0 g_50 = {0x2005908CL,0x2CC25678016B841ALL,0x9EC2B408L,4L,9UL,0x6DL};
 struct S0 *g_93 = &g_50;
-struct S0 g_124 = {0xDAA861DAL,0xFA16DD20EC94203ALL,0x05008DB5L,0x3B29BC1B99DA1B10LL,0xFE3058E3L,1UL};
+struct S0 p = {0xDAA861DAL,0xFA16DD20EC94203ALL,0x05008DB5L,0x3B29BC1B99DA1B10LL,0xFE3058E3L,1UL};
 int *g_61 = &g_20[3];
 int *g_146 = &g_20[4];
 
@@ -57,13 +57,13 @@ __attribute_noinline__ struct S0 func_5(int *arg) {
       *f = p1[0];
       *g_93 = e;
     } else {
-      *g_93 = g_124;   // clone g_124 to (g_93)
+      *g_93 = p;   // clone g_124 to (g_93)
       n1 = 0;
       return *g_93;     // compile to return g_124 directly
     }
     *g_93 = e;
-    g_124.f0 = n2;
-    if (g_124.f0)
+    p.f0 = n2;
+    if (p.f0)
       *g_93 = c;
   }
   return s;
@@ -144,17 +144,17 @@ int main (int argc, char* argv[])
 	side=(side+(unsigned long)setInfo%1000)%1000;
 	side=(side+(unsigned long)setReadCnt%1000)%1000;
 
-    setInfo((unsigned long)(&g_124),sizeof(g_124),"g_124");
+    setInfo((unsigned long)(&p),sizeof(p),"g_124");
     setInfo((unsigned long)(&g_61),sizeof(g_61),"g_61");
  
 
     setReadCnt((unsigned long)(&g_61), sizeof(g_61), 38);
-    setReadCnt((unsigned long)(&g_124), sizeof(g_124), 1);
+    setReadCnt((unsigned long)(&p), sizeof(p), 1);
 
     getInfo((unsigned long)varInfos, global_cnt, (unsigned long)accesses, access_cnt);
     func_5(p2);
 
-    side=(side+(unsigned long)&g_124)%1000;
+    side=(side+(unsigned long)&p)%1000;
     side=(side+(unsigned long)g_61)%1000;
 
 
