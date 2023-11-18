@@ -45,8 +45,8 @@
 #include "CGOptions.h"
 #include "SafeOpFlags.h"
 #include "ExtensionMgr.h"
-#include<stdio.h>//$
-#include "Function.h"//zkb
+#include <stdio.h>
+#include "Function.h"
 
 DefaultProgramGenerator::DefaultProgramGenerator(int argc, char *argv[], unsigned long seed)
 	: argc_(argc),

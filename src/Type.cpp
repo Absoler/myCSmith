@@ -721,9 +721,7 @@ Type::make_one_struct_field(vector<const Type*> &random_fields,
 	unsigned int i = rnd_upto(AllTypes.size(), &f);
 	ERROR_RETURN();
 	const Type* type = AllTypes[i];
-	if(type->is_aggregate()){
-		printf("2");
-	}
+
 	random_fields.push_back(type);
 	CVQualifiers qual = CVQualifiers::random_qualifiers(type, FieldConstProb, FieldVolatileProb);
 	ERROR_RETURN();
@@ -1990,14 +1988,6 @@ void
 Type::doFinalization(void)
 {
 	vector<Type *>::iterator j;
-	for(j = AllTypes.begin(); j != AllTypes.end(); ++j){
-		if((*j)->is_aggregate()&&(*j)->contain_pointer_field()){
-			printf("3");
-		}
-		if((*j)->eType==ePointer&&(*j)->ptr_type->is_aggregate()){
-			printf("3");
-		}
-	}
 	for(j = AllTypes.begin(); j != AllTypes.end(); ++j)
 		delete (*j);
 	AllTypes.clear();

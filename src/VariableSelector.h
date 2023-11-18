@@ -62,7 +62,7 @@ class VariableSelector
 {
 	friend class ArrayVariable;
 public:
-    static void set_used(const Variable* var, CGContext& context, bool isReturn=false); //zkb
+    static void set_used(const Variable* var, CGContext& context, bool isReturn=false);
 	static void record_paramRead(const Variable* var, const CGContext& context,  int endLevel, bool isReturn=false);
     static void record_paramStore(const Variable* var, const  CGContext& context, int level, bool isReturn=false);
 	static void record_globalUse(const Variable* var, CGContext& context, bool isArrayOp=false, bool isReturn=false);
@@ -123,7 +123,7 @@ public:
 	static void get_all_local_vars(const Block* b, vector<const Variable *> &vars);
 	static const Variable* find_var_by_name(string name);
 
-	static bool check_var_used(const Variable* var, bool isSource=false);	//zkb
+	static bool check_var_used(const Variable* var, bool isSource=false);
     static bool inCopyVec(const Variable* var);
     static Variable* genNewGlobalWrapper(Effect::Access access, const CGContext &cg_context, const Type* t, const CVQualifiers* qfer);
     static void addToCopyVec(Variable* var);

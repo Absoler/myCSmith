@@ -772,9 +772,6 @@ FactPointTo::get_pointees_under_level(const Variable* ptr, int indirect, const s
 	//[0, indirect], a total of indirect+1 variables
 	//indirect_level 0 means the ptr itself, of course it will be read if indirect > 0
 	//if it's a 1-level pointer dereffed for writing outside, then the arg <indirect> is 0
-	if(indirect>1){
-		// printf("1");
-	}
 	for(int i=1; i<=indirect; i++){
 		tmp=FactPointTo::merge_pointees_of_pointers(tmp, facts);
 		res[i].insert(res[i].begin(), tmp.begin(),tmp.end());

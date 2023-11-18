@@ -88,12 +88,11 @@ ExpressionVariable::make_random(CGContext &cg_context, const Type* type, const C
                 So for avoidance of add extra check of invalid_var's collective, (maybe some 
                 unexpected problem) we just randomize our guide policy
             */
-            // PRINT_LOC("make global rval start")
+
             scope = eGlobal;
         }
 		const Variable* var = 0;
 		// try to use one of must_read_vars in CGContext
-        // PRINT_LOC()
 		var = VariableSelector::select_must_use_var(Effect::READ, cg_context, type, qfer);
 		if (var == NULL) {
             eMatchType mt = (guide == eMustInt ? eConvert : eFlexible);
@@ -114,19 +113,16 @@ ExpressionVariable::make_random(CGContext &cg_context, const Type* type, const C
 			&& (var->is_argument() || var->is_local())) {
 			continue;
 		}
-        // PRINT_LOC()
+
 		// forbid a escaping pointer to take the address of an argument or a local variable
 		int indirection = var->type->get_indirect_level() - type->get_indirect_level();
-		if(indirection<0){
-			// printf("");
-		}
+
 		if (as_return && CGOptions::no_return_dead_ptr() &&
 			FactPointTo::is_pointing_to_locals(var, cg_context.get_current_block(), indirection, fm->global_facts)) {
 			continue;
 		}
 		int valid = FactPointTo::opportunistic_validate(var, type, fm->global_facts);
 		
-		// PRINT_LOC()
 		// if this var will be an arg, check whether it contain global that will be read/written in target function (with the same deref-level) 
 		VariableSet used_globals_in_param;	// these vars will be read/written if this var is qualified for an arg
 		if(as_param && use_counter!=NULL && valid){
@@ -134,47 +130,36 @@ ExpressionVariable::make_random(CGContext &cg_context, const Type* type, const C
 			int indirect=var->type->get_indirect_level() - type->get_indirect_level();
 			int end_level=var->type->get_indirect_level();
 			
-            // if(CGOptions::test_introduce_store()){
-                
-            // }else{
-            // PRINT_LOC()
-                map<int, VariableSet> varsMap=FactPointTo::get_pointees_in_range(var, fm->global_facts, indirect, end_level);
-                for(int i=1; i<=end_level&&valid; i++){
-                    if(use_counter->find(i)==use_counter->end()){
-                        //接下来的解引用不会在函数中被访问
-                        break;
-                    }
-                    assert(i<=end_level-indirect);  // 如果没问题，把上面的循环上界改成它
-                    for(const Variable* v:varsMap[i]){
-                        if(v->is_global()){
-                            if((*use_counter)[i]>1 || ((*use_counter)[i]==1&&VariableSelector::check_var_used(v))){	//read/write more than once in the func or once and it's already used
-                                valid=false;
-                                break;
-                            }else{
-                                if((*use_counter)[i]==1)
-                                    used_globals_in_param.push_back(v);
-                            }
+            map<int, VariableSet> varsMap=FactPointTo::get_pointees_in_range(var, fm->global_facts, indirect, end_level);
+            for(int i=1; i<=end_level&&valid; i++){
+                if(use_counter->find(i)==use_counter->end()){
+                    //接下来的解引用不会在函数中被访问
+                    break;
+                }
+                assert(i<=end_level-indirect);  // 如果没问题，把上面的循环上界改成它
+                for(const Variable* v:varsMap[i]){
+                    if(v->is_global()){
+                        if((*use_counter)[i]>1 || ((*use_counter)[i]==1&&VariableSelector::check_var_used(v))){	//read/write more than once in the func or once and it's already used
+                            valid=false;
+                            break;
+                        }else{
+                            if((*use_counter)[i]==1)
+                                used_globals_in_param.push_back(v);
                         }
                     }
                 }
-            // }
+            }
 
 		}
-		// PRINT_LOC("%s %d", var->name.c_str(), valid)
+	
 		if (valid) {
 			ExpressionVariable tmp(*var, type);
 			if (tmp.visit_facts(fm->global_facts, cg_context)) {
 				ev = tmp.get_indirect_level() == 0 ? new ExpressionVariable(*var) : new ExpressionVariable(*var, type);
 				bool get=false;
-				if (var->name=="g_1343.f3.f1") { 
-					get = true;
-				}
-                // PRINT_LOC()
+
 				int indirect = tmp.get_indirect_level();
 				cg_context.curr_blk = cg_context.get_current_block();
-
-				if(var->is_argument()&&indirect>0)
-					printf("3");
                 
                 if(CGOptions::test_introduce_store()){
                     // for store-test, only need restriction on arg, (check whether dereferences this arg will be written in callee)
@@ -190,28 +175,20 @@ ExpressionVariable::make_random(CGContext &cg_context, const Type* type, const C
                             if(var->is_argument()){
                                 VariableSelector::record_paramRead(var, cg_context, indirect-i, as_return); //这个地方添加次数可能过多导致可以用的参数也不能用了
                             }
-                            if(get&&var->name=="g_1343.f3.f1"){
-                                printf("will set_used\n");
-                            }
+
                             VariableSelector::set_used(var, cg_context, as_return);
                         }
                     }
                     // var is selected as arg and these globals will be deref-ed and read in function
-                    // if(used_globals_in_param.size()>0)
-                    // 	printf("in %s\n",var->name.c_str());
+
                     for(const Variable* v:used_globals_in_param){
-                        // printf("will read %s\n", v->name.c_str());
                         VariableSelector::set_used(v, cg_context);	//如果以后允许参数执行次数大于一次，这里set_used记录次数时要记录那个次数
                     }
 
-                    if(ev->get_indirect_level()!=0){
-                        // printf("%d %s\n",ev->get_indirect_level(),ev->get_var()->get_actual_name().c_str());
-                    }
                 }
                 break;  //success
                 
 			}else {
-                // PRINT_LOC("variable")
 				cg_context.reset_effect_accum(eff_accum);
 				cg_context.reset_effect_stm(eff_stmt);
 			}
@@ -228,9 +205,6 @@ ExpressionVariable::make_random(CGContext &cg_context, const Type* type, const C
 		Bookkeeper::record_address_taken(ev->get_var());
 	}
 	Bookkeeper::record_volatile_access(ev->get_var(), deref_level, false);
-    // if(guide == eGlobalVar){
-    //     PRINT_LOC("make global rval done")
-    // }
 	return ev;
 }
 

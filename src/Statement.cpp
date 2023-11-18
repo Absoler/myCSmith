@@ -715,7 +715,6 @@ Statement::stm_visit_facts(vector<const Fact*>& inputs, CGContext& cg_context, b
 			}
 			
 			if(more){
-				printf("@");
 				ok=false;
 			}
 		}

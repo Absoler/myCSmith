@@ -178,7 +178,7 @@ StatementArrayOp::StatementArrayOp(Block* b, const ArrayVariable* av,
 	  body(body),
 	  init_value(0)
 {
-	printf("2");// Nothing else to do.
+	// Nothing else to do.
 }
 
 /*

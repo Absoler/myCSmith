@@ -514,7 +514,6 @@ VariableSelector::setvarArray(ArrayMgr* mgr, vector<vector<int>> &index_values, 
 }
 
 
-//zkb
 void VariableSelector::set_used(const Variable *var, CGContext& context, bool isReturn) {
     /* only restrict choosen var when detecting specific prolem*/
     // if(CGOptions::test_copyPropagation() && !inCopyVec(var)){
@@ -522,16 +521,8 @@ void VariableSelector::set_used(const Variable *var, CGContext& context, bool is
     // }
     //find the used target in GlobalList by name, and set its used = true
     bool get=false;
-    if(var->name=="g_846"){
-        get=true;
-        printf("set g_1343.f3.f1\n");
-    }
    
     assert(!( (!var->get_top_container()->isArray) &&var->is_array_field()));   //make sure there's not an array embedded in an aggregate
-    if(var->isArray&&var->is_global()){
-        var->is_global();
-        printf("1");
-    }
     // assert(var->is_argument()||var->is_local()||var->is_global());
 
     if(var->is_field_var()&&!var->get_top_container()->isArray){
@@ -656,9 +647,7 @@ void VariableSelector::set_used(const Variable *var, CGContext& context, bool is
                     }
                 }else{
                     printf("%s var array\n",av->name.c_str());
-                    if(av->name=="g_764"){
-                        printf("1");
-                    }
+
                     vector<pair<const Variable*, int>> pureIndices=getPureIndices(av->get_indices());
                     vector<vector<int>> indexVals=generateIndexValues(pureIndices, (context.get_current_func())->rangesOfVar);
                     (context.get_current_func())->indexValsOfVar[av]=indexVals;
@@ -711,9 +700,6 @@ void VariableSelector::set_used(const Variable *var, CGContext& context, bool is
 }
 
 void VariableSelector::record_globalUse(const Variable* var, CGContext &context, bool isArrayOp, bool isReturn){
-    if(var->name=="g_846"){
-        printf("1");
-    }
     if(context.get_current_block()->is_loop()){
         forVars.insert(var);
         int loopNum=context.get_current_block()->get_loop_num();
@@ -753,9 +739,6 @@ void VariableSelector::record_paramRead(const Variable* var, const CGContext& co
     if(var->is_field_var()){
         // read of p.field will be treated as p is read
         var=var->get_top_container();
-    }
-    if(var->name=="p_55"){
-        printf("1");
     }
     assert(!var->isArray);
     const Block* blk=context.get_current_block();
@@ -976,9 +959,6 @@ VariableSelector::choose_var(vector<Variable *> vars,
     //prepare for deref-check
     FactMgr *fm=get_fact_mgr(&cg_context);
     vector<const Variable*> pointee_vars;
-    if(type->eType==eUnion){
-        printf("1");
-    }
 
     for (i = vars.begin(); i != vars.end(); ++i) {
         // skip any type mismatched var
@@ -1036,9 +1016,6 @@ VariableSelector::choose_var(vector<Variable *> vars,
         if (is_eligible_var((*i), deref_level, access, cg_context)) {
             // Otherwise, this is an acceptable choice.
             ok_vars.push_back(*i);
-            if((*i)->name=="g_10[1].f1"){
-                printf("1");
-            }
         }
     }
 
@@ -1110,9 +1087,6 @@ VariableSelector::create_and_initialize(Effect::Access access, const CGContext &
         var = new_variable(name, t, init, qfer);
     }
     assert(var);
-    if(var->name=="l_457"){
-        printf("3");
-    }
     return var;
 }
 
@@ -1132,9 +1106,6 @@ VariableSelector::GenerateNewGlobal(Effect::Access access, const CGContext &cg_c
                             : *qfer;
     ERROR_GUARD(NULL);
     string name = RandomGlobalName();
-    if(name=="g_103"){
-        printf("1");
-    }
     tmp_count++;
     Variable *var = create_and_initialize(access, cg_context, t, &var_qfer, 0, name);
 
@@ -1258,18 +1229,7 @@ Variable *
 VariableSelector::SelectGlobal(Effect::Access access, const CGContext &cg_context, const Type *type,
                                const CVQualifiers *qfer, eMatchType mt, const vector<const Variable *> &invalid_vars) {
     Variable *var = choose_var(GlobalList, access, cg_context, type, qfer, mt, invalid_vars);
-    if(var&&var->is_field_var()){
-//        printf("%s\n",var->name.c_str());
-    }//zkb
-    if(var){
-//        printf("%d %s %s\n",var->type->get_indirect_level(),var->name.c_str(),var->get_actual_name().c_str());
-    }
-    if(type->get_indirect_level()>0){
-//        printf("%d\n",type->get_indirect_level());  //zkb
-    }
-    if(var&&var->type->get_indirect_level()!=0){
-//        printf("%s %s\n",var->name.c_str(),var->get_actual_name().c_str());
-    }
+
     ERROR_GUARD(NULL);
     if (var == 0) {
         if (CGOptions::expand_struct()) {
@@ -2033,9 +1993,7 @@ VariableSelector::itemize_array(CGContext &cg_context, const ArrayVariable *av) 
         vector<const Variable *> ok_ivs;
         unsigned int dimen_len = av->get_sizes()[i];
         map<const Variable *, unsigned int>::iterator iter;
-        if(cg_context.iv_bounds.size()>1){
-            printf("1");
-        }
+
         for (iter = cg_context.iv_bounds.begin(); iter != cg_context.iv_bounds.end(); ++iter) {
             if (iter->second != INVALID_BOUND && iter->second < dimen_len) {    // in case that iv's range exceed the size
                 const Variable *iv = iter->first;

@@ -264,9 +264,7 @@ Block::make_random(CGContext &cg_context, bool looping, int init, int test, int 
 		delete b;
 		return NULL;
 	}
-	// printf("---------------\n");
-	// printf(" %d\n %d\n", FuncListSize(),b->block_size());
-	// printf("---------------\n\n");
+
 	// ISSUE: in the exhaustive mode, do we need a return statement here
 	// if the last statement is not?
 	Error::set_error(SUCCESS);
@@ -862,9 +860,6 @@ Block::post_creation_analysis(CGContext& cg_context, const Effect& pre_effect)
 				for(auto p:stms[i]->use_counter){
 					const Variable* var=p.first;
 					int cnt=p.second;
-					if(var->name=="g_846"){
-						printf("g_635.f7 remove %d\n", cnt);
-					}
 					func->global_counter[var]-=cnt;
 				}
 				// undo call counter in stms[i]

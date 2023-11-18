@@ -111,9 +111,6 @@ Lhs::make_random(CGContext &cg_context, const Type* t, const CVQualifiers* qfer,
 			valid = false;
 		}
 		if(valid){
-            if(var->name=="l_45"){
-                printf("1");
-            }
             if(CGOptions::test_introduce_store()){
                 // check store
                 int deref_level = var->type->get_indirect_level() - t->get_indirect_level();

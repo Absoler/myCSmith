@@ -91,16 +91,6 @@ FunctionInvocation::make_random(bool is_std_func,
 		// 	callee = Function::choose_func(get_all_functions(), cg_context, type, qfer);
 		// }
 		if (callee != NULL) {
-			if(callee->name=="func_2"){
-				printf("hack\n");
-				for(auto p:callee->param_use_counter){
-					printf("%s\n", p.first->name.c_str());
-					for(auto pp:p.second){
-						printf("level: %d	cnt: %d\n", pp.first, pp.second);
-					}
-					printf("\n");
-				}
-			}
 			FunctionInvocationUser *fiu = new FunctionInvocationUser(callee, true, NULL);
 			fiu->build_invocation(callee, cg_context);
 			fi = fiu;

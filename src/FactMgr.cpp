@@ -395,9 +395,6 @@ FactMgr::update_fact_for_assign(const Lhs* lhs, const Expression* rhs, FactVec& 
 		const ExpressionFuncall* ef=(const ExpressionFuncall*)rhs;
 		if((ef->get_invoke())->invoke_type==eFuncCall){
 			const FunctionInvocationUser* invoke=(const FunctionInvocationUser*)ef->get_invoke();
-			if(invoke->get_func()->name=="func_39"){
-				printf("1");
-			}
 		}
 	}
 	bool changed = false;

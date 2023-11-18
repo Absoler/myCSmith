@@ -236,9 +236,7 @@ StatementFor::make_iteration(CGContext& cg_context, StatementAssign*& init, Expr
 	if (cg_context.rw_directive) {
 		vector<const Variable*> arrays;
 		cg_context.rw_directive->find_must_use_arrays(arrays);
-		if(arrays.size()>1){
-			printf("3");
-		}
+
 		if (!arrays.empty()) {
 			const ArrayVariable* av = dynamic_cast<const ArrayVariable*>(VariableSelector::choose_ok_var(arrays));
 			assert(av);
@@ -484,12 +482,8 @@ StatementFor::output_header(std::ostream& out, int indent) const
 void
 StatementFor::Output(std::ostream &out, FactMgr* fm, int indent) const
 {
-	// if(array) 
-		// printf("$$$");
 	output_header(out, indent);
 	body.Output(out, fm, indent);
-	// if(array) 
-		// printf("$$$");
 }
 
 bool
