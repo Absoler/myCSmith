@@ -64,12 +64,16 @@ using namespace std;
 #define CGOPTIONS_DEFAULT_SPLIT_FILES_DIR	("./output")
 #define CGOPTIONS_DEFAULT_OUTPUT_FILE		("")
 #define PLATFORM_CONFIG_FILE                ("platform.info")
+#define CGOPTIONS_DEFAULT_MAX_SWITCH_CASE_NUM   (7)
 
 /*
  *
  */
 class CGOptions {
 public:
+    static int max_switch_case_num(void);
+    static int max_switch_case_num(int p);
+
     static bool test_copyPropagation(void);
     static bool test_copyPropagation(bool p);
 
@@ -493,6 +497,7 @@ private:
 	static void parse_string_options(string vname, vector<std::string> &v);
 
 	// Until I do this right, just make them all static.
+    static int max_switch_case_num_;
     static bool test_copyPropagation_;
     static bool test_introduce_store_;
 	static bool verbose_;

@@ -46,7 +46,7 @@ inline_function_prob=50
 
 builtin_function_prob=50
 
-[statement_prob,statement_block_prob=0,statement_ifelse_prob=25,statement_for_prob=30,statement_return_prob=35,statement_continue_prob=40,statement_break_prob=45,statement_goto_prob=50,statement_arrayop_prob=60,statement_assign_prob=100]
+[statement_prob,statement_block_prob=0,statement_switch_prob=5,statement_ifelse_prob=25,statement_for_prob=30,statement_return_prob=35,statement_continue_prob=40,statement_break_prob=45,statement_goto_prob=50,statement_arrayop_prob=60,statement_assign_prob=100]
 
 (assign_unary_ops_prob,unary_plus_prob=1,unary_minus_prob=1,unary_not_prob=1,unary_bit_not_prob=1)
 

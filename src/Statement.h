@@ -81,7 +81,8 @@ enum eStatementType
 	eContinue,
 	eBreak,
 	eGoto,
-	eArrayOp
+	eArrayOp,
+    eSwitch
 //  ..more?  try, catch, throw
 //	eHash,
 };
@@ -140,7 +141,7 @@ public:
 
 	const Statement* find_container_stm(void) const;
 
-	static bool is_compound(eStatementType t) {return t==eBlock || t==eFor || t==eIfElse || t==eArrayOp;}
+	static bool is_compound(eStatementType t) {return t==eBlock || t==eFor || t==eIfElse || t==eArrayOp || t==eSwitch;}
 
 	bool is_ctrl_stmt(void) const {return eType == eContinue || eType == eBreak || eType == eGoto;}
 

@@ -69,6 +69,7 @@
 #include "StatementContinue.h"
 #include "StatementGoto.h"
 #include "StatementArrayOp.h"
+#include "StatementSwitch.h"
 #include "Variable.h"
 #include "ArrayVariable.h"
 #include "VectorFilter.h"
@@ -136,6 +137,9 @@ Statement::number_to_type(unsigned int value)
 	return type;
 }
 
+/*
+    return true if filter out
+ */
 bool StatementFilter::filter(int value) const
 {
 	assert(value != -1);
@@ -306,6 +310,9 @@ Statement::make_random(CGContext &cg_context,
 	case eArrayOp:
 		s = StatementAssign::make_random(cg_context);
 		break;
+    case eSwitch:
+        s = StatementSwitch::make_random(cg_context);
+        break;
 	}
     cout<<(flag?"hit":"no")<<endl;
 	ERROR_GUARD(NULL);

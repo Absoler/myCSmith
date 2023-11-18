@@ -79,6 +79,7 @@ enum dType {
 	dtGenerateNewVariable,
 	dtInitPointerValue,
 	dtSafeOpFlags,
+    dtStatementSwitch,
 };
 
 #define DEPTH_GUARD_BY_DEPTH_NORETURN(d) \

@@ -69,9 +69,6 @@ StatementIf::make_random(CGContext &cg_context)
 		pre_facts = fm->global_facts;
 	}
 	cg_context.get_effect_stm().clear();
-	if(cg_context.get_current_func()->name=="func_3"){
-		printf("1");
-	}
 	Expression *expr = Expression::make_random(cg_context, get_int_type(), NULL, false, !CGOptions::const_as_condition());
 	ERROR_GUARD(NULL);
 	// func_1 hacking, re-analyze for multiple function calls

@@ -51,7 +51,7 @@ build/
 
 # outputfile
 *output*.c
-runtime/output2
+runtime/output*
 temp.*
 
 # extra files from pintool

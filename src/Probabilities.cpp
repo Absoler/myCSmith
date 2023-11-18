@@ -795,6 +795,7 @@ Probabilities::set_default_statement_prob()
 
 	// never generate stand-alone blocks
 	SET_SINGLE_NAME("statement_block_prob", Block, 0);
+    SET_SINGLE_NAME("statement_switch_prob", Switch, 5);
 	SET_SINGLE_NAME("statement_ifelse_prob", IfElse, 15);
 	SET_SINGLE_NAME("statement_for_prob", For, 30);
 	SET_SINGLE_NAME("statement_return_prob", Return, 35);

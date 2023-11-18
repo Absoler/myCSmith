@@ -3,7 +3,7 @@
     args[0] is the orginal case file to be reduced, and reduction won't modify it
     args[1] is the compiler we use
 =cut
-$root_dir="/home/csmith_delayAssign_O2";
+$root_dir=
 use Cwd;
 $len=scalar @ARGV;
 $src_file="output2.c";

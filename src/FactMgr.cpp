@@ -117,6 +117,9 @@ FactMgr::add_param_facts(const vector<const Expression*>& param_values, FactVec&
 	}
 }
 
+/*
+    add facts generated from init values to the `v`
+ */
 void
 FactMgr::add_new_var_fact(const Variable* v, FactVec& facts)
 {

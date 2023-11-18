@@ -187,6 +187,8 @@ set(csmith_SOURCES
   StatementIf.h
   StatementReturn.cpp
   StatementReturn.h
+  StatementSwitch.cpp
+  StatementSwitch.h
   StringUtils.cpp
   StringUtils.h
   Type.cpp

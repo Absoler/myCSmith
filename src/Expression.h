@@ -87,7 +87,8 @@ enum eTermType
 enum genGuide   // special guidance for making a grammar unit
 {
     eNone,
-    eGlobalVar
+    eGlobalVar,
+    eMustInt
 };
 
 template <class Key, class Value>

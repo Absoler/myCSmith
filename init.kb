@@ -20,10 +20,10 @@ scripts=(${kb_scripts[*]} ${py_scripts[*]} ${pl_scripts[*]})
 # clear env variables
 if [ $# -lt 1 ] ; then
     for file in ${scripts[*]} ; do
-        sed "s%^\(root_dir=\).*%\1%" $file -i.bak
-        sed "s%^\(opt_option=\).*%\1%" $file -i.bak
-        sed "s%^\(test_type=\).*%\1%" $file -i.bak
-        sed "s%^\(pin_root=\).*%\1%" $file -i.bak
+        sed "s%^\(\$\?root_dir=\).*%\1%" $file -i.bak
+        sed "s%^\(\$\?opt_option=\).*%\1%" $file -i.bak
+        sed "s%^\(\$\?test_type=\).*%\1%" $file -i.bak
+        sed "s%^\(\$\?pin_root=\).*%\1%" $file -i.bak
     done
     exit
 fi
