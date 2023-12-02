@@ -48,18 +48,18 @@ void print_globals(FILE* file);
 //---------get global info------------
 VOID record_var(ADDRINT _addr, ADDRINT cnt){
     // printf("pin info-addr: %lu    cnt: %ld\n",_addr,cnt);
-    if(cnt>MAX_GLOBAL_VAR_NUM){
+    if(cnt > MAX_GLOBAL_VAR_NUM) {
         printf("too many global variables!\n");
         exit(1);
     }
     PIN_SafeCopy(globals,Addrint2VoidStar(_addr),sizeof(Var)*cnt);
-    cnt_globals=cnt;
+    cnt_globals = cnt;
     sort(globals, globals+cnt, comp_Var);
 }
 
 VOID hack_getInfo(RTN rtn, VOID* v){
 	RTN_Open(rtn);
-	if(RTN_Name(rtn)=="getInfo"){
+	if(RTN_Name(rtn) == "getInfo"){
 		RTN_InsertCall(rtn, IPOINT_BEFORE, (AFUNPTR)record_var,
 			IARG_FUNCARG_ENTRYPOINT_VALUE, 0,
 			IARG_FUNCARG_ENTRYPOINT_VALUE, 1, IARG_END);
@@ -208,44 +208,46 @@ map<Access, int> actual_counter;    // record actual access times of each access
 set<Access> unexpectedAccesses;      
 set<Access> actual_clusters[MAX_GLOBAL_VAR_NUM];    // contain all actual acesses belonging to corresponding var, (may not overlapped with each other, only belong to the same var)
 set<Access> expect_clusters[MAX_GLOBAL_VAR_NUM];    // contain all expected acesses of corresponding var
-map<Access, set<ADDRINT>> instOfAccess;    // record all insts addrs a access occur
+map<Access, set<ADDRINT> > instOfAccess;    // record all insts addrs a access occur
 map<Access, int> varOfAccess;              // record which var the access belongs to (record index)
 map<Access, bool> isForVars;    // record whether a access is forVar, maybe not necessary now, 'cause we combine two situation
 map<Access, bool> isGlobals;    // record whether a access located in global, not necessary too.
 
 map<ADDRINT, string> disasMap;  // store instruction text
 map<ADDRINT, string> funcMap;   // store funcName inst belongs
-map<ADDRINT, pair<int, int>> locMap;    // store src location the inst belongs
+map<ADDRINT, pair<int, int> > locMap;    // store src location the inst belongs
 map<ADDRINT, string> typeMap;   // store inst's mnemonic
 
 // get the global var that cover `access`
-inline int getInd(const Access& access){
+inline int getInd(const Access& access) {
     Var tmp = {access.first, access.second, ""};
-    return upper_bound(globals, globals+cnt_globals, tmp, comp_Var)-globals-1;
+    return upper_bound(globals, globals+cnt_globals, tmp, comp_Var) - globals - 1;
 }
 
-inline bool partOf(const Access& access, const Var& var){
-    return access.first>=var.addr && access.first+access.second<=var.addr+var.size;
+inline bool partOf(const Access& access, const Var& var) {
+    return access.first >= var.addr && access.first + access.second <= var.addr + var.size;
 }
-inline bool partOf(const Access& access1, const Access& access2){
-    return (access1.first>=access2.first && access1.first+access1.second<=access2.first+access2.second);
+inline bool partOf(const Access& access1, const Access& access2) {
+    return (access1.first >= access2.first && access1.first + access1.second <= access2.first + access2.second);
 }
 
-bool isGlobal(const Access &access){
+bool isGlobal(const Access &access) {
     // ADDRINT start=access.first;
     // unsigned len=access.second;
     
     int id=getInd(access);
     bool res=false;
-    if(id>=0 && id<cnt_globals){
+    if(id >= 0 && id < cnt_globals){
         res = partOf(access, globals[id]);
     }
     return res;
 }
 
-set<Access> findContainers(const Access& target, const set<Access>& accesseset){
+set<Access> findContainers(const Access& target, const set<Access>& accessSet){
     set<Access> res;
-    for(auto access:accesseset){
+    std::set<Access>::const_iterator it;
+    for (it = accessSet.begin(); it != accessSet.end(); it++){
+        const Access &access = *it;
         if(partOf(target, access)){
             res.insert(access);
         }
@@ -336,7 +338,7 @@ VOID record_Access(ADDRINT ip, ADDRINT start, UINT32 len) {
     }
 }
 
-VOID hack_targetFunc(RTN rtn, VOID* v){
+VOID hack_targetFunc(RTN rtn, VOID* v) {
     RTN_Open(rtn);
     string funcName = RTN_Name(rtn);
     if (funcName.find(targetFuncPrefix) !=  funcName.npos) {
@@ -362,21 +364,22 @@ VOID hack_targetFunc(RTN rtn, VOID* v){
 }
 
 //----------analysis--------
-VOID Fini(INT32 code, VOID* val){
+VOID Fini(INT32 code, VOID* val) {
     printf("nothing at start of fini\n");
     fprintf(outfile, (isWrite?"test introduced stores\n\n":"test introduced loads\n\n"));
     print_globals(outfile);
     // build relations between global vars and global accesses
     
-    for(auto p:actual_counter){
-        Access access=p.first;
+    map<Access, int>::iterator it;
+    for (it = actual_counter.begin(); it != actual_counter.end(); it++) { 
+        Access access = it->first;
         int id=getInd(access);
         assert(partOf(access, globals[id]));
         varOfAccess[access]=id;
         actual_clusters[id].insert(access);
     }
-    for(auto p:expect_counter){
-        Access access=p.first;
+    for (it = expect_counter.begin(); it != expect_counter.end(); it++) {
+        Access access = it->first;
         int id=getInd(access);
         assert(partOf(access, globals[id]));
         varOfAccess[access]=id;
@@ -386,10 +389,11 @@ VOID Fini(INT32 code, VOID* val){
     int row, col;
     fprintf(outfile,"\n\nproblem of too many accesses:\n");
     fprintf(descriptFile, "more\n");
-    for(int id=0;id<cnt_globals;id++){
-        if(actual_clusters[id].size()>0){
+    for (int id = 0; id < cnt_globals; id++) {
+        if (actual_clusters[id].size() > 0) {
             printf("%s has %lu accesses\n", globals[id].name, actual_clusters[id].size());
-            for(Access access:actual_clusters[id]){
+            for (set<Access>::iterator it = actual_clusters[id].begin(); it != actual_clusters[id].end(); it++) {
+                Access access = *it;
                 set<Access> actual_set=findContainers(access, actual_clusters[id]);
                 set<Access> expect_set=findContainers(access, expect_clusters[id]);
                 if(expect_set.empty()){
@@ -397,13 +401,13 @@ VOID Fini(INT32 code, VOID* val){
                     continue;
                 }
                 int actual_cnt=0, expect_cnt=0;
-                for(Access access:actual_set){
-                    actual_cnt+=actual_counter[access]; 
+                for (set<Access>::iterator it_sub = actual_set.begin(); it_sub != actual_set.end(); it_sub++) {
+                    actual_cnt+=actual_counter[*it_sub]; 
                 }
-                for(Access access:expect_set){
-                    expect_cnt+=expect_counter[access];
+                for (set<Access>::iterator it_sub = expect_set.begin(); it_sub != expect_set.end(); it_sub++){
+                    expect_cnt+=expect_counter[*it_sub];
                 }
-                if(actual_cnt>expect_cnt){
+                if(actual_cnt > expect_cnt){
                     
                     fprintf(outfile, "%s: start at 0x%lx of len = %d\n", globals[varOfAccess[access]].name, access.first, access.second);
                     fprintf(outfile, "expected %d but access %d\n", expect_cnt, actual_cnt);
@@ -411,19 +415,22 @@ VOID Fini(INT32 code, VOID* val){
                     fprintf(descriptFile, "var\n");
                     fprintf(descriptFile, "%s %d\n", globals[varOfAccess[access]].name, access.second);
                     fprintf(descriptFile, "%d %d\n", expect_cnt, actual_cnt);
-                    for(ADDRINT ip: instOfAccess[access]){
+                    for(set<ADDRINT>::iterator it_ip = instOfAccess[access].begin(); it_ip != instOfAccess[access].end(); it_ip++){
+                        ADDRINT ip = *it_ip;
                         row=locMap[ip].first;
                         col=locMap[ip].second;
                         fprintf(outfile, "  %s:%d:%d  %lx  %s\n", funcMap[ip].c_str(), row, col, ip, disasMap[ip].c_str());
                         fprintf(descriptFile, "%s\n", typeMap[ip].c_str());
                     }
                     fprintf(outfile,"insts of other accesses\n");
-                    for(Access otherAccess:actual_set){
+                    for (set<Access>::iterator it_sub = actual_set.begin(); it_sub != actual_set.end(); it_sub++) {
+                        Access otherAccess = *it_sub;
                         if(otherAccess==access){
                             continue;
                         }
                         fprintf(outfile, "  start at 0x%lx of len = %d\n", otherAccess.first, otherAccess.second);
-                        for(ADDRINT ip: instOfAccess[otherAccess]){
+                        for(set<ADDRINT>::iterator it_ip = instOfAccess[otherAccess].begin(); it_ip != instOfAccess[otherAccess].end(); it_ip++) {
+                            ADDRINT ip = *it_ip;
                             row=locMap[ip].first;
                             col=locMap[ip].second;
                             fprintf(outfile, "  %s:%d:%d  %lx  %s\n", funcMap[ip].c_str(), row, col, ip, disasMap[ip].c_str());
@@ -444,16 +451,18 @@ VOID Fini(INT32 code, VOID* val){
     
     fprintf(outfile, "problem of unexpected accesses\n");
     fprintf(descriptFile, "unexpected\n");
-    for(Access access: unexpectedAccesses){
+    for(set<Access>::iterator it = unexpectedAccesses.begin(); it != unexpectedAccesses.end(); it++) {
+        Access unexpectedAccess = *it;
         fprintf(descriptFile, "var\n");
-        fprintf(outfile, "%s: start at 0x%lx of len = %d\n", globals[varOfAccess[access]].name, access.first, access.second);
-        fprintf(descriptFile, "%s %d\n", globals[varOfAccess[access]].name, access.second);
+        fprintf(outfile, "%s: start at 0x%lx of len = %d\n", globals[varOfAccess[unexpectedAccess]].name, unexpectedAccess.first, unexpectedAccess.second);
+        fprintf(descriptFile, "%s %d\n", globals[varOfAccess[unexpectedAccess]].name, unexpectedAccess.second);
         fprintf(descriptFile, "0 -1\n");    // for unexpected cases, assign actual to -1
-        for(ADDRINT addr:instOfAccess[access]){
-            row=locMap[addr].first;
-            col=locMap[addr].second;
-            fprintf(outfile, "  %s:%d:%d  %lx  %s\n", funcMap[addr].c_str(), row, col, addr, disasMap[addr].c_str());
-            fprintf(descriptFile, "%s\n", typeMap[addr].c_str());
+        for(set<ADDRINT>::iterator it_ip = instOfAccess[unexpectedAccess].begin(); it_ip != instOfAccess[unexpectedAccess].end(); it_ip++){
+            ADDRINT ip = *it_ip;
+            row=locMap[ip].first;
+            col=locMap[ip].second;
+            fprintf(outfile, "  %s:%d:%d  %lx  %s\n", funcMap[ip].c_str(), row, col, ip, disasMap[ip].c_str());
+            fprintf(descriptFile, "%s\n", typeMap[ip].c_str());
         }
         fprintf(outfile, "\n");
         fprintf(descriptFile, "done\n");
