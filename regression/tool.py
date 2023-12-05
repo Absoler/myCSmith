@@ -54,14 +54,19 @@ if __name__ == "__main__":
             print("ERROR: no ./caserepo directory", file=sys.stderr)
         
         triggercnt = 0
-        respath = compiler + ".res"
+        respath = "{}/regression/{}.res".format(root_dir, compiler)
+        if os.path.exists(respath):
+            print("ERROR: res file exists! can't overwrite", file=sys.stderr)
+            exit(1)
+        with open(respath, "w") as f:
+            f.write("{}\n".format(compiler))
 
         oldpath = os.getcwd()
         tempdir = os.popen("mktemp -d").read().strip()
         os.chdir(tempdir)
         for i in range(gen):
             casepath = "{}/output{}.c".format(tempdir, i)
-            os.system("cp {}/caserepo/output{}.c {}".format(root_dir, i, casepath))
+            os.system("cp {}/regression/caserepo/output{}.c {}".format(root_dir, i, casepath))
             if not os.path.exists(casepath):
                 print("ERROR: missing " + casepath, file=sys.stderr)
             os.system("{} {} {} 2>/dev/null".format(compiler, casepath, opt_option))
@@ -70,7 +75,7 @@ if __name__ == "__main__":
             if ret == 0 and res == "1":
                 triggercnt += 1
                 with open(respath, "a") as f:
-                    f.write("{} trigger {}\n".format(compiler, i))
+                    f.write("{}\n".format(i))
         print("{} / {} triggered".format(triggercnt, gen))
         os.chdir(oldpath)
         os.system("rm {} -r".format(tempdir))
