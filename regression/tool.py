@@ -43,7 +43,7 @@ if __name__ == "__main__":
         if not os.path.exists("./caserepo"):
             os.mkdir("./caserepo")
         for i in range(gen):
-            os.system("build/src/csmith --copyPropagation --no-safe-math --no-bitfields --no-volatiles --probability-configuration ./prob.txt  -o caserepo/output{}.c 1>/dev/null".format(i))
+            os.system("build/src/csmith --no-safe-math --no-bitfields --no-volatiles --probability-configuration ./prob.txt  -o caserepo/output{}.c 1>/dev/null".format(i))
             if i % 1000 == 0:
                 print("generate {} cases".format(i))
     
@@ -53,6 +53,8 @@ if __name__ == "__main__":
         if not os.path.exists("./caserepo"):
             print("ERROR: no ./caserepo directory", file=sys.stderr)
         
+        if not os.path.exists("./descripts"):
+            os.mkdir("descripts")
         triggercnt = 0
         respath = "{}/regression/{}.res".format(root_dir, compiler)
         if os.path.exists(respath):
@@ -76,6 +78,7 @@ if __name__ == "__main__":
                 triggercnt += 1
                 with open(respath, "a") as f:
                     f.write("{}\n".format(i))
+                os.system("cp descript.out {}/regression/descripts/{}_{}descript.out".format(root_dir, compiler, i))
         print("{} / {} triggered".format(triggercnt, gen))
         os.chdir(oldpath)
         os.system("rm {} -r".format(tempdir))

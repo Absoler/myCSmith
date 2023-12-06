@@ -2,31 +2,35 @@
 
 root_dir=
 opt_option=
+test_type=
 pin_root=
-
+gcc_name=
+clang_name=
 
 if [ $# -lt 3 ] ; then
     echo "need 3 arguments,
 1) src file need reduced (absolute path)
-2) compiler option (0, 1, 2)
+2) used compiler
 3) output file (absolute path)
 "
     exit
 fi
 
 if [ $2 == 0 ] ; then
-    compiler=gcc-12.1
+    compiler=$gcc_name
 elif [ $2 == 1 ] ; then
     compiler=icc
 else 
-    compiler=clang
+    compiler=$clang_name
 fi
 echo $compiler
 rm $root_dir/test/target.c $root_dir/test/define.c $root_dir/test/main.c
 dir=`mktemp -d`
 cd $dir
 cp $1 output2.c
-$root_dir/test/shell.kb $2
+$compiler output2.c -g $opt_option -w -o output2
+$pin_root/pin -t $root_dir/checkAccess/obj-intel64/checkAccess.so -- ./output2 $test_type func ./
+objdump -dl output2 > disas
 cp descript.out $root_dir/test/descript.old
 $root_dir/test/pl.pl output2.c $compiler
 cp $root_dir/test/define.c full.c

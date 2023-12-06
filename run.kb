@@ -13,6 +13,9 @@ opt_option=
 test_type=
 pin_root=
 
+gcc_name=
+clang_name=
+
 if [ $# -ge 1 ]; then
     limit=$1
 else
@@ -23,7 +26,7 @@ if [ $test_type -eq 1 ]; then
 else
     type_option=""
 fi
-compilers=("gcc-12.1"  "clang")
+compilers=($gcc_name $clang_name)
 
 # 1th line of base.out is the number of C cases, 2th line is the next of current reduced case
 read base < ./base.out
@@ -34,10 +37,10 @@ run_err=0
 while [ $cnt -lt $limit ]
 # while true
 do
-    build/src/csmith $type_option --copyPropagation --no-safe-math --no-bitfields --no-volatiles --probability-configuration ./prob.txt  -o runtime/output2.c 1>/dev/null
+    build/src/csmith $type_option --no-safe-math --no-bitfields --no-volatiles --probability-configuration ./prob.txt  -o runtime/output2.c 1>/dev/null
     fail=0  # fail flag
     for compiler in ${compilers[*]} ; do
-        $compiler runtime/output2.c -gdwarf-4 -w $opt_option -o runtime/output2
+        $compiler runtime/output2.c -g -w $opt_option -o runtime/output2
         if [ $? -gt 0 ] ; then
             echo $compiler compilation error
             cp runtime/output2.c compileFail/${cnt}output2.c

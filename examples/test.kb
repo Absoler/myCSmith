@@ -2,13 +2,15 @@
 opt_option=
 test_type=
 pin_root=
+gcc_name=
+clang_name=
 if [ $1 == 0 ] ; then
-    compiler=gcc-12.1
+    compiler=$gcc_name
 elif [ $1 == 1 ] ; then
     compiler=icc
 else 
-    compiler=clang
+    compiler=$clang_name
 fi
-$compiler output2.c -gdwarf-4 $opt_option -w -o output2
+$compiler output2.c -g $opt_option -w -o output2
 $pin_root/pin -t ../checkAccess/obj-intel64/checkAccess.so -- ./output2 $test_type func ./
 objdump -dl output2 > disas

@@ -12,6 +12,7 @@ root_dir=
 opt_option=
 pin_root=
 test_type=
+clang_name=
 
 > full.c
 
@@ -19,7 +20,7 @@ cat $root_dir/test/define.c >> full.c
 cat target.c >> full.c
 cat $root_dir/test/main.c >> full.c
 
-compiler=clang
+compiler=$clang_name
 
 $compiler full.c -g $opt_option -o full >/dev/null 2>info
 compile_stat=$?

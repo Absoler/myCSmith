@@ -4,13 +4,15 @@
     args[1] is the compiler we use
 =cut
 $root_dir=
+$gcc_name=
+
 use Cwd;
 $len=scalar @ARGV;
 $src_file="output2.c";
 if($len>=1){
     $src_file=$ARGV[0];
 }
-$compiler="gcc-12.1";
+$compiler=$gcc_name;
 if($len>=2){
     $compiler=$ARGV[1];
 }

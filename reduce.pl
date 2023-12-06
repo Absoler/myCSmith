@@ -7,6 +7,9 @@ use File::Find;
 use Cwd;
 # use Sort::Naturally;
 
+$gcc_name=
+$clang_name=
+
 my $base;
 open my $file, "<", "base.out";
 while(<$file>){
@@ -24,7 +27,7 @@ sub wanted{
     if($_ =~ m/\.c/){
         $_ =~ m/\d+/;
         
-        if($&>=$base){     # 3942 3971  3997
+        if($&>=$base){
             push @files, $_;
         }
     }
@@ -43,9 +46,9 @@ find(\&wanted, "$cwd/problem");
 
 for(my $i=0; $i<=$#files; $i++) {
     my $file=$files[$i];
-    $compiler="gcc-12.1";
+    $compiler=$gcc_name;
     if($file =~ m/clang/){
-        $compiler="clang";
+        $compiler=$clang_name;
     }elsif($file =~ m/icc/){
         $compiler="icc";
     }

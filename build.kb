@@ -1,0 +1,29 @@
+#!/bin/bash
+
+# ----------------------------------------
+#   args[1]: 0 or omitted means not force to build
+#            1 means force build csmith
+# ----------------------------------------
+
+pin_root=
+
+# build csmith
+if [ $# -ge 1 ] ; then
+    force_csmith=$1
+else
+    force_csmith=0
+fi
+if [ ! -d "./build" ] ; then
+    mkdir ./build
+    force_csmith=1
+fi
+if [ $force_csmith -eq 1 ] ; then
+    cd build
+    cmake ..
+    make -j $((`nproc`/2))
+    cd ..
+fi
+# build pintool
+cd checkAccess
+make DEBUG=1 PIN_ROOT=$pin_root obj-intel64/checkAccess.so
+cd ..
