@@ -3,37 +3,82 @@
 #   compare two descript.out file and judge whether 
 #   the two source C code have the same problem
 #
-from cmath import exp
-from fileinput import filename
+
 import sys
 import copy
 
-assert(len(sys.argv)==3)
 
 class Var:
-    def __init__(self) -> None:
-        self.name = ""
-        self.len = 0
-        self.expect = 0
-        self.actual = 0
-        self.insts = set()
+    def __init__(self, name = "", len = 0, expect = 0, actual = 0, insts = None) -> None:
+        self.name = name
+        self.len = len
+        self.expect = expect
+        self.actual = actual
+        self.insts = insts if insts else set()
     def __eq__(self, v) -> bool:
         if self.name.strip() != v.name.strip():
             return False
-        elif self.insts != v.insts:
+        elif set(self.insts) != set(v.insts):
             return False
         elif self.expect!=v.expect or self.actual!=v.actual:
             return False
         else:
             return True
     def __hash__(self) -> int:
-        return hash(self.name)
+        return hash(self.name) + hash(self.expect) + hash(self.actual)
+    
+    def keys(self):
+        return ("name", "len", "expect", "actual", "insts")
+    
+    def __getitem__(self, key):
+        if key == 'insts':
+            return list(self.insts)
+        else:
+            return getattr(self, key)
+    
+    @classmethod
+    def fromdict(cls, data):
+        return cls(**data)
     
 
 class Info:
     def __init__(self) -> None:
         self.mores = set()
         self.unexpected = set()
+    
+    def __eq__(self, other) -> bool:
+        return self.mores == other.mores and self.unexpected == other.unexpected
+    
+    def __hash__(self) -> int:
+        mores_hsh = 0
+        for var in self.mores:
+            mores_hsh += hash(var)
+        unexpected_hsh = 0
+        for var in self.unexpected:
+            unexpected_hsh += hash(var)
+        return mores_hsh * unexpected_hsh
+
+    def keys(self):
+        return ("mores", "unexpected")
+    
+    def __getitem__(self, key):
+        if key == "mores" or key == "unexpected":
+            return list(map(dict, list(getattr(self, key))))
+        else:
+            return getattr(self, key)
+    
+    @classmethod
+    def fromdict(cls, data):
+        info = cls()
+
+        for var in data["mores"]:
+            info.mores.add(Var.fromdict(var))
+        for var in data["unexpected"]:
+            info.unexpected.add(Var.fromdict(var))
+        
+        return info
+
+
 
 def parse(fileName: str):
     file = open(fileName, "r")
@@ -76,12 +121,14 @@ def parse(fileName: str):
     file.close()
     return info
 
-curInfo = parse(sys.argv[1])
-refInfo = parse(sys.argv[2])
-if curInfo.mores==refInfo.mores and curInfo.unexpected==refInfo.unexpected:
-    exit(0)
-else:
-    exit(1)
+if __name__ == "__main__":
+    assert(len(sys.argv)==3)
+    curInfo = parse(sys.argv[1])
+    refInfo = parse(sys.argv[2])
+    if curInfo == refInfo:
+        exit(0)
+    else:
+        exit(1)
 # for v in curInfo.mores:
 #     print(v.name)
 #     print(v.expect, v.actual)

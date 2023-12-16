@@ -86,3 +86,5 @@ match/boring
 msvc/*[!*.kb]
 msvc/*[!*.bat]
 
+# result files
+*.res

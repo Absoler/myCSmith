@@ -14,6 +14,7 @@ parser = argparse.ArgumentParser(description="some practicals functions for test
 parser.add_argument("--file_range", default="" ,type=str, help="fileNo range")
 parser.add_argument("-d", default="./", type=str, help="target directory")
 parser.add_argument("--generate", "-gen", default=-1, help="only generate [NUM] test cases in ./caserepo", type=int)
+parser.add_argument("--range", "-r", default="-1", help="specify test range, `integer` or `integer-integer` which indicates [lo, hi)")
 parser.add_argument("--test", default="", help="specify compiler, count number of triggered case, use -gen to specify test range")
 
 def get_file_range(range:str, dir:str):
@@ -43,20 +44,30 @@ if __name__ == "__main__":
         if not os.path.exists("./caserepo"):
             os.mkdir("./caserepo")
         for i in range(gen):
-            os.system("build/src/csmith --no-safe-math --no-bitfields --no-volatiles --probability-configuration ./prob.txt  -o caserepo/output{}.c 1>/dev/null".format(i))
+            os.system("{}/build/src/csmith --no-safe-math --no-bitfields --no-volatiles --probability-configuration {}/prob.txt  -o caserepo/output{}.c 1>/dev/null".format(root_dir, root_dir, i))
             if i % 1000 == 0:
                 print("generate {} cases".format(i))
-    
+
     if args.test:
-        assert(gen != -1)
+        part_flag = "-" in args.range
+        lo, hi = 0, -1
+        if part_flag:
+            lo, hi = map(int, args.range.split("-"))
+        else:
+            hi = int(args.range)
+
+        assert(hi != -1)
         compiler = args.test
         if not os.path.exists("./caserepo"):
             print("ERROR: no ./caserepo directory", file=sys.stderr)
-        
+
         if not os.path.exists("./descripts"):
             os.mkdir("descripts")
         triggercnt = 0
-        respath = "{}/regression/{}.res".format(root_dir, compiler)
+        if part_flag:
+            respath = "{}/regression/{}_{}-{}.res".format(root_dir, compiler, lo, hi)
+        else:
+            respath = "{}/regression/{}.res".format(root_dir, compiler)
         if os.path.exists(respath):
             print("ERROR: res file exists! can't overwrite", file=sys.stderr)
             exit(1)
@@ -66,7 +77,7 @@ if __name__ == "__main__":
         oldpath = os.getcwd()
         tempdir = os.popen("mktemp -d").read().strip()
         os.chdir(tempdir)
-        for i in range(gen):
+        for i in range(lo, hi):
             casepath = "{}/output{}.c".format(tempdir, i)
             os.system("cp {}/regression/caserepo/output{}.c {}".format(root_dir, i, casepath))
             if not os.path.exists(casepath):
@@ -79,7 +90,8 @@ if __name__ == "__main__":
                 with open(respath, "a") as f:
                     f.write("{}\n".format(i))
                 os.system("cp descript.out {}/regression/descripts/{}_{}descript.out".format(root_dir, compiler, i))
-        print("{} / {} triggered".format(triggercnt, gen))
+            os.system("rm {}".format(casepath))
+        print("{} / {} triggered".format(triggercnt, hi - lo))
         os.chdir(oldpath)
-        os.system("rm {} -r".format(tempdir))
-        print(tempdir)
+        # os.system("rm {} -r".format(tempdir))
+        print("leave {}".format(tempdir))
