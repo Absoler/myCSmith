@@ -6,9 +6,9 @@
 #   args[1]: optimization option (-O2)
 #   args[2]: test type (introduce load or store, 0 and 1 respectively)
 #   args[3]: pin_root path (the absolute path to the pin package)
-#   args[4]: whether build (None means not, 1 means build in `build` directory)
-#   args[5]: gcc's program name in `PATH`
-#   args[6]: clang's program name in `PATH`
+#   args[4]: gcc's program name in `PATH`
+#   args[5]: clang's program name in `PATH`
+#   args[6]: host directory where docker container's shares
 #   if no args, clear all env vars
 # -------------------
 
@@ -19,13 +19,14 @@ pl_scripts=(`find ./ -name "*.pl"`)
 scripts=(${kb_scripts[*]} ${py_scripts[*]} ${pl_scripts[*]})
 
 
-if [ $# -ne 0 -a $# -ne 5 ] ; then
+if [ $# -ne 0 -a $# -ne 6 ] ; then
     echo "## This script takes 0 argumets or 5, to set or reset config variables"
     echo "#   args[1]: optimization option (-O2)
 #   args[2]: test type (introduce load or store, 0 and 1 respectively)
 #   args[3]: pin_root path (the absolute path to the pin package)
 #   args[4]: gcc's program name in \`PATH\`
-#   args[5]: clang's program name in \`PATH\`"
+#   args[5]: clang's program name in \`PATH\`
+#   args[6]: host directory where docker container's shares"
 
     exit
 fi
@@ -38,6 +39,7 @@ if [ $# -lt 1 ] ; then
         sed "s%^\(\$\?pin_root=\).*%\1%" $file -i.bak
         sed "s%^\(\$\?gcc_name=\).*%\1%" $file -i.bak
         sed "s%^\(\$\?clang_name=\).*%\1%" $file -i.bak
+        sed "s%^\(\$\?host_root_dir=\).*%\1%" $file -i.bak
     done
     echo "# all config variables cleared!"
     exit
@@ -98,7 +100,10 @@ for file in ${pl_scripts[*]} ; do
     sed "s%^\(\$clang_name=\).*%\1\"$5\";%" $file -i.bak
 done
 
-
+# set host mount directory
+for file in ${kb_scripts[*]} ; do
+    sed "s%^\(host_root_dir=\).*%\1$6%" $file -i.bak
+done
 
 # make necessary directories and files
 if [ ! -d "./problem" ] ; then

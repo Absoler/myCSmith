@@ -91,6 +91,7 @@ if __name__ == "__main__":
                     f.write("{}\n".format(i))
                 os.system("cp descript.out {}/regression/descripts/{}_{}descript.out".format(root_dir, compiler, i))
             os.system("rm {}".format(casepath))
+            os.system("rm {}/core*".format(tempdir))
         print("{} / {} triggered".format(triggercnt, hi - lo))
         os.chdir(oldpath)
         # os.system("rm {} -r".format(tempdir))

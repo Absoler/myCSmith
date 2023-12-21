@@ -12,7 +12,7 @@ $src_file="output2.c";
 if($len>=1){
     $src_file=$ARGV[0];
 }
-$compiler=$gcc_name;
+$compiler="null_compiler";
 if($len>=2){
     $compiler=$ARGV[1];
 }
@@ -72,14 +72,9 @@ if (Cwd::abs_path(getcwd()) ne "$root_dir/test") {
     system("cp $root_dir/test/target.c ./target.c");
 }
 my $stat;
-if($compiler =~ m/gcc/){
-    $stat = system("creduce --tidy --n $core $root_dir/test/judge_gcc.kb target.c");
-}elsif($compiler =~ m/clang/){
-    $stat = system("creduce --tidy --n $core $root_dir/test/judge_clang.kb target.c");
-}elsif($compiler =~ m/icc/){
-    $stat = system("creduce --tidy --n $core $root_dir/test/judge_icc.kb target.c");
-}
+print $compiler;
+$stat = system("export current_reduce_compiler=$compiler && creduce --tidy --n $core $root_dir/test/judge.kb target.c");
 if (Cwd::abs_path(getcwd()) ne "$root_dir/test") {
-    system("mv target.c $root_dir/test/")
+    system("cp target.c $root_dir/test/")
 }
 exit $stat;

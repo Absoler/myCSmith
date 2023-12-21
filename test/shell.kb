@@ -3,15 +3,23 @@ opt_option=
 test_type=
 pin_root=
 root_dir=
-gcc_name=
-clang_name=
-if [ $1 == 0 ] ; then
-    compiler=$gcc_name
-elif [ $1 == 1 ] ; then
-    compiler=icc
-else 
-    compiler=$clang_name
+host_root_dir=
+
+# --------------------------------------
+#   argv[1] must be full compiler name or docker image name
+#   such as 'gcc-13.2.0' or 'gcc:10.1.0'
+#
+#   [optional]: argv[2] is the mount directory inside the container,
+#   if in host, set the same as `host_root_dir`
+# --------------------------------------
+
+if [[ $1 =~ - ]] ; then
+    $1 output2.c -gdwarf-4 $opt_option -w -o output2
+else
+    if [ $# -lt 2 ] ; then echo "need input mount position!" ; fi
+    cwd=`pwd`
+    cwd_fromhost=$host_root_dir/${cwd##$2}
+    docker run --rm -v $cwd_fromhost:/root -w /root $1 ${1%%:*} /root/output2.c $opt_option -gdwarf-4 -o output2 2>/dev/null
 fi
-$compiler output2.c -g $opt_option -w -o output2
 $pin_root/pin -t $root_dir/checkAccess/obj-intel64/checkAccess.so -- ./output2 $test_type func ./
-objdump -dl output2 > disas
+objdump -dl --no-show-raw-insn  output2 > disas
