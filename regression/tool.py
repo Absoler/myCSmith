@@ -3,6 +3,7 @@ import argparse
 import re
 import os
 import sys
+import multiprocessing as mp
 
 opt_option=
 test_type=
@@ -16,6 +17,7 @@ parser.add_argument("-d", default="./", type=str, help="target directory")
 parser.add_argument("--generate", "-gen", default=-1, help="only generate [NUM] test cases in ./caserepo", type=int)
 parser.add_argument("--range", "-r", default="-1", help="specify test range, `integer` or `integer-integer` which indicates [lo, hi)")
 parser.add_argument("--test", default="", help="specify compiler, count number of triggered case, use -gen to specify test range")
+parser.add_argument("--nproc", "-n", default=1, type=int, help="allow n jobs at once, available for generate")
 
 def get_file_range(range:str, dir:str):
     res = []
@@ -31,6 +33,33 @@ def get_file_range(range:str, dir:str):
     return res
 
 
+def gencases(pnum:int, mod:int, limit:int):
+    ids = [i*mod + pnum for i in range(int(limit/mod))]
+    for id in ids:
+        os.system("{}/build/src/csmith {} --no-safe-math --no-bitfields --no-volatiles --probability-configuration {}/prob.txt  -o caserepo/output{}.c 1>/dev/null".format(root_dir, type_option, root_dir, id))
+        if (id-pnum) % 1000 == 0:
+            print("generate {} cases".format(id))
+
+def runtests(ids:list, resfile_lock):
+    tempdir = os.popen("mktemp -d").read().strip()
+    os.chdir(tempdir)
+    for id in ids:
+        casepath = "{}/output{}.c".format(tempdir, id)
+        os.system("cp {}/regression/caserepo/output{}.c {}".format(root_dir, id, casepath))
+        if not os.path.exists(casepath):
+            print("ERROR: missing " + casepath, file=sys.stderr)
+        os.system("{} {} {} 2>/dev/null".format(compiler, casepath, opt_option))
+        ret = os.system("timeout -s SIGTERM 5s {}/pin -t {}/checkAccess/obj-intel64/checkAccess.so -- ./a.out {} func ./ 1>/dev/null".format(pin_root, root_dir, test_type))
+        res = os.popen("cat result.out").read().strip()
+        if ret == 0 and res == "1":
+            resfile_lock.acquire()
+            with open(respath, "a") as f:
+                f.write("{}\n".format(id))
+            resfile_lock.release()
+            os.system("cp descript.out {}/regression/descripts/{}_{}descript.out".format(root_dir, compiler, id))
+        os.system("rm {}".format(casepath))
+        os.system("rm {}/core*".format(tempdir))
+
 if __name__ == "__main__":
     args = parser.parse_args()
     directory = args.d
@@ -39,6 +68,7 @@ if __name__ == "__main__":
         for file in files:
             print(file)
 
+    n = int(args.nproc)
     gen = int(args.generate)
     if gen != -1 and args.test == "":
         if test_type == "0":
@@ -47,10 +77,13 @@ if __name__ == "__main__":
             type_option = "--store"
         if not os.path.exists("./caserepo"):
             os.mkdir("./caserepo")
-        for i in range(gen):
-            os.system("{}/build/src/csmith {} --no-safe-math --no-bitfields --no-volatiles --probability-configuration {}/prob.txt  -o caserepo/output{}.c 1>/dev/null".format(root_dir, type_option, root_dir, i))
-            if i % 1000 == 0:
-                print("generate {} cases".format(i))
+        # if `n` doesn't divide `gen`, generate int(gen/n)*n cases
+        jobs = []
+        for i in range(n):
+            jobs.append(mp.Process(target=gencases, args=(i, n, gen)))
+            jobs[i].start()
+        for i in range(n):
+            jobs[i].join()
 
     if args.test:
         part_flag = "-" in args.range
@@ -67,7 +100,7 @@ if __name__ == "__main__":
 
         if not os.path.exists("./descripts"):
             os.mkdir("descripts")
-        triggercnt = 0
+        
         if part_flag:
             respath = "{}/regression/{}_{}-{}.res".format(root_dir, compiler, lo, hi)
         else:
@@ -79,24 +112,21 @@ if __name__ == "__main__":
             f.write("{}\n".format(compiler))
 
         oldpath = os.getcwd()
-        tempdir = os.popen("mktemp -d").read().strip()
-        os.chdir(tempdir)
+        
+        
+        ids_arr = [ [] for i in range(n)]
         for i in range(lo, hi):
-            casepath = "{}/output{}.c".format(tempdir, i)
-            os.system("cp {}/regression/caserepo/output{}.c {}".format(root_dir, i, casepath))
-            if not os.path.exists(casepath):
-                print("ERROR: missing " + casepath, file=sys.stderr)
-            os.system("{} {} {} 2>/dev/null".format(compiler, casepath, opt_option))
-            ret = os.system("timeout -s SIGTERM 5s {}/pin -t {}/checkAccess/obj-intel64/checkAccess.so -- ./a.out {} func ./ 1>/dev/null".format(pin_root, root_dir, test_type))
-            res = os.popen("cat result.out").read().strip()
-            if ret == 0 and res == "1":
-                triggercnt += 1
-                with open(respath, "a") as f:
-                    f.write("{}\n".format(i))
-                os.system("cp descript.out {}/regression/descripts/{}_{}descript.out".format(root_dir, compiler, i))
-            os.system("rm {}".format(casepath))
-            os.system("rm {}/core*".format(tempdir))
-        print("{} / {} triggered".format(triggercnt, hi - lo))
-        os.chdir(oldpath)
+            ids_arr[i%n].append(i)
+
+        resfile_lock = mp.Manager().Lock()
+        jobs = []
+        for i in range(n):
+            jobs.append(mp.Process(target=runtests, args=(ids_arr[i], resfile_lock)))
+            jobs[i].start()
+        for i in range(n):
+            jobs[i].join()
+        with open(respath, "r") as f:
+            triggercnt = len(f.readlines()) - 1
+        print("trigger {}/{}".format(triggercnt, hi - lo))
+
         # os.system("rm {} -r".format(tempdir))
-        print("leave {}".format(tempdir))
