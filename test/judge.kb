@@ -10,7 +10,8 @@ root_dir=
 opt_option=
 pin_root=
 test_type=
-# `current_reduce_compiler` should be defined
+# `positive_compiler` or `negative_compiler` should be defined,
+# indicated
 
 > full.c
 
@@ -18,8 +19,14 @@ cat $root_dir/test/define.c >> full.c
 cat target.c >> full.c
 cat $root_dir/test/main.c >> full.c
 
-
-$current_reduce_compiler full.c -g $opt_option -o full >/dev/null 2>info
+if [ -z $positive_compiler ] ; then
+    positive=0
+    compiler=$negative_compiler
+else
+    positive=1
+    compiler=$positive_compiler
+fi
+$compiler full.c -gdwarf-4 $opt_option -o full >/dev/null 2>info
 compile_stat=$?
 if [ $compile_stat -ne 0 ]; then
     # echo "fail due to compilation error: " $compile_stat >> $root_dir/reduce.log
@@ -38,12 +45,9 @@ if [ $run_stat -ne 0 ]; then
     exit 1
 fi
 
-$root_dir/test/compare.py ./descript.out $root_dir/test/descript.old
-if [ $? -ne 0 ] ; then
+$root_dir/test/compare.py ./descript.out $root_dir/test/descript.positive
+
+if [ $? -eq $positive ] ; then
     exit 1
 fi
-read line < ./result.out
-if [ $line == 1 ] ; then
-    exit 0
-fi
-exit 1
+exit 0

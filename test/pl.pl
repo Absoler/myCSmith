@@ -1,7 +1,6 @@
 #!/usr/bin/perl
 =pod
     args[0] is the orginal case file to be reduced, and reduction won't modify it
-    args[1] is the compiler we use
 =cut
 $root_dir=
 $gcc_name=
@@ -12,10 +11,7 @@ $src_file="output2.c";
 if($len>=1){
     $src_file=$ARGV[0];
 }
-$compiler="null_compiler";
-if($len>=2){
-    $compiler=$ARGV[1];
-}
+
 $target_file="$root_dir/test/target.c";
 $define_file="$root_dir/test/define.c";
 $main_file="$root_dir/test/main.c";
@@ -72,8 +68,7 @@ if (Cwd::abs_path(getcwd()) ne "$root_dir/test") {
     system("cp $root_dir/test/target.c ./target.c");
 }
 my $stat;
-print $compiler;
-$stat = system("export current_reduce_compiler=$compiler && creduce --tidy --n $core $root_dir/test/judge.kb target.c");
+$stat = system("creduce --tidy --n $core $root_dir/test/judgemany.kb target.c");
 if (Cwd::abs_path(getcwd()) ne "$root_dir/test") {
     system("cp target.c $root_dir/test/")
 }

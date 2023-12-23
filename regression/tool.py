@@ -41,10 +41,14 @@ if __name__ == "__main__":
 
     gen = int(args.generate)
     if gen != -1 and args.test == "":
+        if test_type == "0":
+            type_option = ""
+        else:
+            type_option = "--store"
         if not os.path.exists("./caserepo"):
             os.mkdir("./caserepo")
         for i in range(gen):
-            os.system("{}/build/src/csmith --no-safe-math --no-bitfields --no-volatiles --probability-configuration {}/prob.txt  -o caserepo/output{}.c 1>/dev/null".format(root_dir, root_dir, i))
+            os.system("{}/build/src/csmith {} --no-safe-math --no-bitfields --no-volatiles --probability-configuration {}/prob.txt  -o caserepo/output{}.c 1>/dev/null".format(root_dir, type_option, root_dir, i))
             if i % 1000 == 0:
                 print("generate {} cases".format(i))
 

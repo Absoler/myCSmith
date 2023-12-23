@@ -1,0 +1,19 @@
+#!/bin/bash
+
+root_dir=
+
+for compiler in $(cat $root_dir/reducecondition) ; do
+    if [[ $compiler == ~* ]] ; then
+        export positive_compiler=
+        export negative_compiler=${compiler:1}
+    else
+        export positive_compiler=$compiler
+        export negative_compiler=
+    fi
+    $root_dir/test/judge.kb
+    ret=$?
+    if [ $ret -ne 0 ]; then
+        exit 1
+    fi
+done
+exit 0
