@@ -28,12 +28,14 @@ Compiler Resources:
 '''
 
 import os, sys, argparse
+import itertools
+from compilerbugs import Bug, Compiler, CompilerType, pintool
 import json
 import re
 sys.path.append("{}/test".format(root_dir))
 import compare
 import multiprocessing as mp
-
+import option
 
 
 regression_files = os.listdir("{}/regression/result".format(root_dir))
@@ -44,33 +46,6 @@ default_bugs_path = "{}/regression/bugs.json".format(root_dir)
 default_merge_path = "{}/regression/mergebugs.json".format(root_dir)
 visit_compile_names = set() # record checked compilers, avoid redundant check
 
-class Bug:
-    def __init__(self, id:int, info = None) -> None:
-        self.id = id
-        self.info = info
-
-        # filled by Compiler.init_bugs()
-        self.compilerPrefix = ""
-        self.compilerHash = 0
-    
-    def __eq__(self, bug) -> bool:
-        return self.id == bug.id and self.info == bug.info
-    
-    def __hash__(self) -> int:
-        return hash(self.id) + hash(self.info)
-    
-    def keys(self):
-        return ("id", "info", )
-    
-    def __getitem__(self, key):
-        if key == "info":
-            return dict(self.info)
-        else:
-            return getattr(self, key)
-
-    @classmethod
-    def fromdict(cls, data):
-        return Bug(data["id"], compare.Info.fromdict(data["info"]))
 
 
 ''' 
@@ -151,108 +126,9 @@ def save_bugs(bugs_map, save_path = default_bugs_path):
 
 
 
-class Compiler:
-    compiler_map = {}
-    gccs = []
-    clangs = []
-    
-    @classmethod
-    def add(cls, compiler_name:str):
-        if compiler_name not in Compiler.compiler_map:
-            Compiler.compiler_map[compiler_name] = Compiler(*compiler_name.split("-"))
-        
-    @classmethod
-    def get(cls, compiler_name:str):
-        Compiler.add(compiler_name)
-        return Compiler.compiler_map[compiler_name]
-    
-    @classmethod
-    def init_bugs(cls, bugs_map):
-        for bug in bugs_map:
-            for compiler_name in bugs_map[bug]:
-                compiler = Compiler.get(compiler_name)
-                compiler.bugs.append(bug)
-        compilers = list(cls.compiler_map.values())
-        cls.gccs = [compiler for compiler in compilers if compiler.prefix == "gcc"]
-        cls.gccs.sort()
-        cls.clangs = [compiler for compiler in compilers if compiler.prefix == "clang"]
-        cls.clangs.sort()
-        for bug in bugs_map:
-            compilerHash = 0
-            for compiler_name in bugs_map[bug]:
-                compiler = Compiler.get(compiler_name)
-                if compiler.prefix == "gcc":
-                    id = cls.gccs.index(compiler)
-                elif compiler.prefix == "clang":
-                    id = cls.clangs.index(compiler)
-                compilerHash += (1<<id)
-                if not bug.compilerPrefix:
-                    bug.compilerPrefix = "gcc" if compiler.prefix == "gcc" else "clang"
-            bug.compilerHash = compilerHash
-
-    @classmethod
-    def uncompress(cls, cpHash:int, prefix:str):
-        res = []
-        cps = cls.gccs if prefix == "gcc" else cls.clangs
-        for i in range(len(cps)):
-            if cpHash & (1<<i) != 0:
-                res.append(cps[i].name)
-        return res
-    
-    @classmethod
-    def isregression(cls, cpHash) -> bool:
-        i = 1
-        state = 0
-        while i < cpHash:
-            if i & cpHash != 0:
-                if state & 1 == 0:
-                    state += 1
-            else:
-                if state & 1 == 1:
-                    state += 1
-            i *= 2
-        return state > 2
-    
-    @classmethod
-    def hasnewest(cls, cpHash:int, prefix:str) -> bool:
-        if prefix == "gcc":
-            return (1 << (len(Compiler.gccs) - 1)) & cpHash != 0
-        elif prefix == "clang":
-            return (1 << (len(Compiler.clangs) - 1)) & cpHash != 0
-        return False
-    
-    def __init__(self, prefix:str, version:str) -> None:
-        self.prefix = prefix
-        self.version = version
-
-        ''' assume the version code consists of at most 3 2-digit number
-        '''
-        self.varr = list(map(int, version.split(".")))
-        if len(self.varr) < 3:
-            self.varr.extend([0] * (3 - len(self.varr)))
-        self.vnum = self.varr[0] * 10**4 + self.varr[1]  * 10**2 + self.varr[2]
-
-        self.bugs = []
-    
-
-    def __lt__(self, other):
-        return self.vnum < other.vnum
-
-    def __eq__(self, other):
-        return self.prefix == other.prefix and self.vnum == other.vnum
-    
-    def ismain(self) -> bool:
-        if self.prefix == "clang":
-            return self.vnum[1] == 0 and self.vnum[2] == 0
-        elif self.prefix == "gcc":
-            return self.vnum[1] == 2 and self.vnum[2] == 0
-        else:
-            return False
-    
-    @property
-    def name(self):
-        return self.prefix + "-" + self.version
-
+''' this function is used to test more compilers on existed bugs,
+    and extend triggered bug list
+'''
 def test_docker(image_names:list, bugs_map):
     
     tempdir = "{}/regression/tempdir".format(root_dir)
@@ -295,7 +171,7 @@ def test_docker(image_names:list, bugs_map):
                 continue
             
             # same as local test
-            ret = os.system("timeout -s SIGTERM 5s {}/pin -t {}/checkAccess/obj-intel64/checkAccess.so -- ./a.out {} func ./ 1>/dev/null".format(pin_root, root_dir, test_type))
+            ret = pintool("./a.out")
             res = os.popen("cat result.out").read().strip()
             if ret == 0 and res == "1":
                 info = compare.parse("./descript.out")
@@ -307,7 +183,8 @@ def test_docker(image_names:list, bugs_map):
                     print("--> found bug: {} on {}".format(caseid, compiler_name))
     return bugs_map
 
-
+''' similar to `test_docker`
+'''
 def test_local(pnum:int, compiler_names, inputpath:str, queue):
 
     tempdir = "{}/regression/tempdir/{}".format(root_dir, pnum)
@@ -337,7 +214,7 @@ def test_local(pnum:int, compiler_names, inputpath:str, queue):
                 print("WARN: {} fail to compile {}".format(compiler, casepath))
                 continue
             
-            ret = os.system("timeout -s SIGTERM 5s {}/pin -t {}/checkAccess/obj-intel64/checkAccess.so -- ./a.out {} func ./ 1>/dev/null".format(pin_root, root_dir, test_type))
+            ret = pintool("./a.out")
             res = os.popen("cat result.out").read().strip()
             if ret == 0 and res == "1":
                 info = compare.parse("./descript.out")
@@ -350,19 +227,22 @@ def test_local(pnum:int, compiler_names, inputpath:str, queue):
         queue.put(bugs_map)
 
 def analyze_group(bugs_map, option):
-    gccs_bugs_map = {}
-    clangs_bug_map = {}
+    cp_bugs_map_gcc = {}
+    cp_bugs_map_clang = {}
+    bug_cps_map_both = {}
     for bug in bugs_map:
         cpHash = bug.compilerHash
-        if bug.compilerPrefix == "gcc":
-            if cpHash not in gccs_bugs_map:
-                gccs_bugs_map[cpHash] = []
-            gccs_bugs_map[cpHash].append(bug)
-        elif bug.compilerPrefix == "clang":
-            if cpHash not in clangs_bug_map:
-                clangs_bug_map[cpHash] = []
-            clangs_bug_map[cpHash].append(bug)
-
+        if bug.compilerType == CompilerType.gcc:
+            if cpHash not in cp_bugs_map_gcc:
+                cp_bugs_map_gcc[cpHash] = []
+            cp_bugs_map_gcc[cpHash].append(bug)
+        elif bug.compilerType == CompilerType.clang:
+            if cpHash not in cp_bugs_map_clang:
+                cp_bugs_map_clang[cpHash] = []
+            cp_bugs_map_clang[cpHash].append(bug)
+        elif bug.compilerType == CompilerType.both:
+            bug_cps_map_both[bug] = bugs_map[bug]
+    
     regression_cnt = [0, 0]
     constraints = [
         "regression",
@@ -372,31 +252,95 @@ def analyze_group(bugs_map, option):
     for i in range(len(constraints)):
         if option & (1<<i):
             constraint_str += constraints[i] + " "
-    for gccs in gccs_bugs_map:
+    print(constraint_str)
+    for gccs in list(cp_bugs_map_gcc.keys()):
         if option & 1 != 0 and not Compiler.isregression(gccs):
+            cp_bugs_map_gcc.pop(gccs)
             continue
-        if option & 2 != 0 and not Compiler.hasnewest(gccs, "gcc"):
+        if option & 2 != 0 and not Compiler.hasnewest(gccs, CompilerType.gcc):
+            cp_bugs_map_gcc.pop(gccs)
             continue
-        gccs_names = Compiler.uncompress(gccs, "gcc")
-        print("{} bugs for {} {:020b}".format(len(gccs_bugs_map[gccs]), gccs_names, gccs))
-        print("case ids {}".format([bug.id for bug in gccs_bugs_map[gccs]]))
+        gccs_names = Compiler.uncompress(gccs, CompilerType.gcc)
+        print("{} bugs for {} {:010b}".format(len(cp_bugs_map_gcc[gccs]), gccs_names, gccs))
+        print("case ids {}".format([bug.id for bug in cp_bugs_map_gcc[gccs]]))
         regression_cnt[0] += 1
-    for clangs in clangs_bug_map:
+    for clangs in cp_bugs_map_clang:
         if option & 1 != 0 and not Compiler.isregression(clangs):
             continue
-        if option & 2 != 0 and not Compiler.hasnewest(clangs, "clang"):
+        if option & 2 != 0 and not Compiler.hasnewest(clangs, CompilerType.clang):
             continue
-        clangs_names = Compiler.uncompress(clangs, "clang")
-        print("{} bugs for {} {:020b}".format(len(clangs_bug_map[clangs]), clangs_names, clangs))
-        print("case ids {}".format([bug.id for bug in clangs_bug_map[clangs]]))
+        clangs_names = Compiler.uncompress(clangs, CompilerType.clang)
+        print("{} bugs for {} {:016b}".format(len(cp_bugs_map_clang[clangs]), clangs_names, clangs))
+        print("case ids {}".format([bug.id for bug in cp_bugs_map_clang[clangs]]))
         regression_cnt[1] += 1
+    
+    print("## notice! these bugs are triggered both by gcc and clang")
+    for bug in bug_cps_map_both:
+        print("case id {} in {}".format(bug.id, bug_cps_map_both[bug]))
     print("regression sum {}".format(regression_cnt))
 
-    return (gccs_bugs_map, clangs_bug_map)
+    return (cp_bugs_map_gcc, cp_bugs_map_clang)
+
+
+def validateClang(bugs_map:dict):
+    tempdir = "{}/regression/validateclang".format(root_dir)
+    if not os.path.exists(tempdir):
+        os.mkdir(tempdir)
+    
+    os.chdir(tempdir)
+    ''' {
+            "compiler_name" : [hit_count, all_count, [miss_bug_ids]]
+        }
+    '''
+    res = {}
+    for bug in bugs_map:
+        compiler_names = bugs_map[bug]
+        if bug.compilerType != "clang":
+            continue
+        os.system("cp {}/regression/caserepo/output{}.c ./output.c".format(root_dir, bug.id))
+        for compiler_name in compiler_names:
+            ret = os.system("which {}".format(compiler_name))
+            if ret != 0:
+                continue
+            
+            if compiler_name not in res:
+                res[compiler_name] = [0, 0, []]
+            
+            res[compiler_name][1] += 1
+
+            version = Compiler.get(compiler_name).version
+            os.system("{} output.c {} -o elf.clang >/dev/null 2>&1".format(compiler_name, opt_option))
+            
+            optionmgr = option.OptionMgr.get_optionmgr(compiler_name)
+            optionmgr.checkvalidation()
+            optlist = optionmgr.getvalidseq()
+            options_str = option.optiter_to_str(optlist)
+            os.system("clang-{} output.c -S -Xclang -disable-llvm-passes -emit-llvm -o output.ll >/dev/null 2>&1".format(version))
+            os.system("sed '/[aA]ttr/s/optnone//g' output.ll -i")
+            os.system("opt-{} output.ll {} -o output.bc >/dev/null 2>&1".format(version, options_str))
+            os.system("llc-{} output.bc -filetype=obj -o output.o".format(version))
+            os.system("clang-{} output.o -o elf.opt >/dev/null 2>&1".format(version))
+
+            pintool("./elf.clang")
+            os.system("cp descript.out descript.clang")
+
+            pintool("./elf.opt")
+            os.system("cp descript.out descript.opt")
+
+            clang_info = compare.parse("./descript.clang")
+            opt_info = compare.parse("./descript.opt")
+            if clang_info == opt_info:
+                res[compiler_name][0] += 1
+            else:
+                res[compiler_name][2].append(bug.id)
+
+    for compiler_name in res:
+        print(compiler_name)
+        print(res[compiler_name])
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="regression bug analysis tool")
-    parser.add_argument("--init", action="store_true")
+    parser.add_argument("--init", action="store_true", help="init bugs json from ./result directory")
     parser.add_argument("--testlocal", "-tl", default="", help="specfiy a file recorded local compilers to be tested")
     parser.add_argument("--testdocker", "-td", default="", help="specfiy a file recorded compiler docker image names")
     parser.add_argument("--merge", "-m", nargs="+", default="", help="merge the provided bug files and dump it as `mergebugs.json`")
@@ -406,7 +350,9 @@ if __name__ == "__main__":
 
 
     parser.add_argument("--analyzegroup", "-ag", default=-1, type=int, help="group bugs by compiler hash, specify constraints by bit num, `0x1` is regression, `0x2` cares newest version")
-    
+    parser.add_argument("--validateClang", "-vC", action="store_true", help="check whether `clang` and `opt` trigger the same optimization bug")
+    parser.add_argument("--reducegcc", "-rg", action="store_true", help="find the minimum option combination that blocks gcc bug")
+    parser.add_argument("--reduceclang", "-rc", action="store_true", help="find the minimum option combination that blocks clang bug")
     args = parser.parse_args()
 
     if args.init:
@@ -414,6 +360,7 @@ if __name__ == "__main__":
         exit(0)
 
     outputpath = args.output
+    nproc = int(args.nproc)
     
     if args.merge:
         paths = args.merge
@@ -425,10 +372,23 @@ if __name__ == "__main__":
     bugs_map = load_bugs(args.input)
     print("## {} bugs in all".format(len(bugs_map)))
     Compiler.init_bugs(bugs_map)
+
+    if args.validateClang:
+        validateClang(bugs_map)
+        exit(0)
     
     if args.analyzegroup != -1:
-        analyze_group(bugs_map, args.analyzegroup)
+        cp_bugs_map_gcc, cp_bugs_map_clang = analyze_group(bugs_map, args.analyzegroup)
     
+    if args.reducegcc:
+        bugs = list(itertools.chain(*cp_bugs_map_gcc.values()))
+        newest_cp = Compiler.gccs[-1]
+        optionmgr = option.OptionMgr.get_optionmgr(newest_cp.name)
+        for bug in bugs:
+            optionmgr.select_gcc(bug, nproc)
+        exit(0)
+
+
     if args.testlocal:
         results_queue = mp.Queue()
 
@@ -440,7 +400,7 @@ if __name__ == "__main__":
         compiler_names = [name.strip() for name in compiler_names]
         localfile.close()
 
-        nproc = args.nproc
+        nproc = min(nproc, len(compiler_names))
         compiler_names_arr = [[] for i in range(nproc)]
         for i, name in enumerate(compiler_names):
             compiler_names_arr[i%nproc].append(name)

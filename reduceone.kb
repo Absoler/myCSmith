@@ -30,8 +30,13 @@ for compiler in ${compilers[*]} ; do
     fi
     
     $compiler output2.c -g $opt_option -w -o output2
-    $pin_root/pin -t $root_dir/checkAccess/obj-intel64/checkAccess.so -- ./output2 $test_type func ./
+    $pin_root/pin -t $root_dir/checkAccess/obj-intel64/checkAccess.so -- ./output2 $test_type func ./ >/dev/null
     
+    run_stat=$?
+    if [ $run_stat -ne 0 ] ; then
+        echo fail to run bianry compiled by $compiler
+        exit 1
+    fi
     if [ $positive -eq 1 ] ; then
         cp descript.out $root_dir/test/descript.positive
     fi

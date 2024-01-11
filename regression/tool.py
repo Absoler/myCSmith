@@ -10,28 +10,33 @@ test_type=
 pin_root=
 root_dir=
 
-parser = argparse.ArgumentParser(description="some practicals functions for test")
 
-parser.add_argument("--file_range", default="" ,type=str, help="fileNo range")
-parser.add_argument("-d", default="./", type=str, help="target directory")
-parser.add_argument("--generate", "-gen", default=-1, help="only generate [NUM] test cases in ./caserepo", type=int)
-parser.add_argument("--range", "-r", default="-1", help="specify test range, `integer` or `integer-integer` which indicates [lo, hi)")
-parser.add_argument("--test", default="", help="specify compiler, count number of triggered case, use -gen to specify test range")
-parser.add_argument("--nproc", "-n", default=1, type=int, help="allow n jobs at once, available for generate")
+def gencases(pnum:int, mod:int, limit:int):
+    ids = [i*mod + pnum for i in range(int(limit/mod))]
+    for id in ids:
+        os.system("{}/build/src/csmith {} --no-safe-math --no-bitfields --no-volatiles --probability-configuration {}/prob.txt  -o caserepo/output{}.c 1>/dev/null".format(root_dir, type_option, root_dir, id))
+        if (id-pnum) % 1000 == 0:
+            print("generate {} cases".format(id))
 
-def get_file_range(range:str, dir:str):
-    res = []
-    grp = re.match(r"(\d*)-(\d*)", range)
-    start, end = map(int, [
-        grp[1] if grp[1] != "" else "0",
-        grp[2] if grp[2] != "" else "9999"
-        ])
-    files = os.listdir(dir)
-    for file in files:
-        if start <= int(re.match(r"(\d+).*", file)[1]) < end:
-            res.append(dir + "/" + file)
-    return res
-
+def runtests(ids:list, resfile_lock):
+    tempdir = os.popen("mktemp -d").read().strip()
+    os.chdir(tempdir)
+    for id in ids:
+        casepath = "{}/output{}.c".format(tempdir, id)
+        os.system("cp {}/regression/caserepo/output{}.c {}".format(root_dir, id, casepath))
+        if not os.path.exists(casepath):
+            print("ERROR: missing " + casepath, file=sys.stderr)
+        os.system("{} {} {} 2>/dev/null".format(compiler, casepath, opt_option))
+        ret = os.system("timeout -s SIGTERM 5s {}/pin -t {}/checkAccess/obj-intel64/checkAccess.so -- ./a.out {} func ./ 1>/dev/null".format(pin_root, root_dir, test_type))
+        res = os.popen("cat result.out").read().strip()
+        if ret == 0 and res == "1":
+            resfile_lock.acquire()
+            with open(respath, "a") as f:
+                f.write("{}\n".format(id))
+            resfile_lock.release()
+            os.system("cp descript.out {}/regression/descripts/{}_{}descript.out".format(root_dir, compiler, id))
+        os.system("rm {}".format(casepath))
+        os.system("rm {}/core*".format(tempdir))
 
 def gencases(pnum:int, mod:int, limit:int):
     ids = [i*mod + pnum for i in range(int(limit/mod))]
@@ -61,16 +66,18 @@ def runtests(ids:list, resfile_lock):
         os.system("rm {}/core*".format(tempdir))
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="some practicals functions for test")
+    parser.add_argument("--generate", "-gen", default=-1, help="only generate [NUM] test cases in ./caserepo", type=int)
+    parser.add_argument("--range", "-r", default="-1", help="specify test range, `integer` or `integer-integer` which indicates [lo, hi)")
+    parser.add_argument("--test", default="", help="specify compiler, count number of triggered case, use -gen to specify test range")
+    parser.add_argument("--nproc", "-n", default=1, type=int, help="allow n jobs at once, available for generate")
+
     args = parser.parse_args()
-    directory = args.d
-    if args.file_range != "":
-        files = get_file_range(args.file_range, directory)
-        for file in files:
-            print(file)
 
     n = int(args.nproc)
     gen = int(args.generate)
-    if gen != -1 and args.test == "":
+    # generate test cases
+    if gen != -1:
         if test_type == "0":
             type_option = ""
         else:
@@ -84,7 +91,9 @@ if __name__ == "__main__":
             jobs[i].start()
         for i in range(n):
             jobs[i].join()
+        exit(0)
 
+    # run compiler tests
     if args.test:
         part_flag = "-" in args.range
         lo, hi = 0, -1
@@ -130,3 +139,5 @@ if __name__ == "__main__":
         print("trigger {}/{}".format(triggercnt, hi - lo))
 
         # os.system("rm {} -r".format(tempdir))
+        exit(0)
+    
