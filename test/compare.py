@@ -36,6 +36,17 @@ class Var:
         else:
             return getattr(self, key)
     
+    def __str__(self) -> str:
+        s = "var\n"
+        s += "{} {}\n".format(self.name, self.len)
+        s += "{} {}\n".format(self.expect, self.actual)
+        for inst in self.insts:
+            s += "{}\n".format(inst)
+        return s
+    
+    def __repr__(self) -> str:
+        return self.__str__()
+
     @classmethod
     def fromdict(cls, data):
         return cls(**data)
@@ -66,6 +77,18 @@ class Info:
             return list(map(dict, list(getattr(self, key))))
         else:
             return getattr(self, key)
+    
+    def __str__(self) -> str:
+        s = "more\n"
+        for var in self.mores:
+            s += var.__str__()
+        s += "unexpected"
+        for var in self.unexpected:
+            s += var.__str__()
+        return s
+    
+    def __repr__(self) -> str:
+        return self.__str__()
     
     @classmethod
     def fromdict(cls, data):

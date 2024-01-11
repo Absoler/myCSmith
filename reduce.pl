@@ -6,7 +6,7 @@
 use File::Find;
 use Cwd;
 # use Sort::Naturally;
-
+exit(1);
 $gcc_name=
 $clang_name=
 
