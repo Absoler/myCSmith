@@ -103,7 +103,7 @@ class Info:
 
 
 
-def parse(fileName: str):
+def parse(fileName: str = "./descript.out"):
     file = open(fileName, "r")
     flag = 0
 

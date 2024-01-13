@@ -4,6 +4,7 @@ import re
 import os
 import sys
 import multiprocessing as mp
+from compilerbugs import pintool
 
 opt_option=
 test_type=
@@ -27,36 +28,8 @@ def runtests(ids:list, resfile_lock):
         if not os.path.exists(casepath):
             print("ERROR: missing " + casepath, file=sys.stderr)
         os.system("{} {} {} 2>/dev/null".format(compiler, casepath, opt_option))
-        ret = os.system("timeout -s SIGTERM 5s {}/pin -t {}/checkAccess/obj-intel64/checkAccess.so -- ./a.out {} func ./ 1>/dev/null".format(pin_root, root_dir, test_type))
-        res = os.popen("cat result.out").read().strip()
-        if ret == 0 and res == "1":
-            resfile_lock.acquire()
-            with open(respath, "a") as f:
-                f.write("{}\n".format(id))
-            resfile_lock.release()
-            os.system("cp descript.out {}/regression/descripts/{}_{}descript.out".format(root_dir, compiler, id))
-        os.system("rm {}".format(casepath))
-        os.system("rm {}/core*".format(tempdir))
-
-def gencases(pnum:int, mod:int, limit:int):
-    ids = [i*mod + pnum for i in range(int(limit/mod))]
-    for id in ids:
-        os.system("{}/build/src/csmith {} --no-safe-math --no-bitfields --no-volatiles --probability-configuration {}/prob.txt  -o caserepo/output{}.c 1>/dev/null".format(root_dir, type_option, root_dir, id))
-        if (id-pnum) % 1000 == 0:
-            print("generate {} cases".format(id))
-
-def runtests(ids:list, resfile_lock):
-    tempdir = os.popen("mktemp -d").read().strip()
-    os.chdir(tempdir)
-    for id in ids:
-        casepath = "{}/output{}.c".format(tempdir, id)
-        os.system("cp {}/regression/caserepo/output{}.c {}".format(root_dir, id, casepath))
-        if not os.path.exists(casepath):
-            print("ERROR: missing " + casepath, file=sys.stderr)
-        os.system("{} {} {} 2>/dev/null".format(compiler, casepath, opt_option))
-        ret = os.system("timeout -s SIGTERM 5s {}/pin -t {}/checkAccess/obj-intel64/checkAccess.so -- ./a.out {} func ./ 1>/dev/null".format(pin_root, root_dir, test_type))
-        res = os.popen("cat result.out").read().strip()
-        if ret == 0 and res == "1":
+        res = pintool("./a.out")
+        if res == 1:
             resfile_lock.acquire()
             with open(respath, "a") as f:
                 f.write("{}\n".format(id))

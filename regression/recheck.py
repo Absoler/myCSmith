@@ -1,7 +1,13 @@
-#!/usr/local/bin/python3
+#!/usr/bin/python3
+
+''' re-confirm the bugs recorded in `.res` file generate by `tool.py`'s test procedure
+
+'''
 
 import sys, os
 import argparse
+from compilerbugs import pintool
+
 opt_option=
 test_type=
 pin_root=
@@ -53,9 +59,9 @@ for i in caseids:
             exit(1)
         compiler_prefix = compiler.split(":")[0]
         os.system("docker run --rm -v {}:/root -w /root {} {} /root/output.c {} -g".format(source_dir, compiler, compiler_prefix, opt_option))
-    ret = os.system("timeout -s SIGTERM 5s {}/pin -t {}/checkAccess/obj-intel64/checkAccess.so -- ./a.out {} func ./ 1>/dev/null".format(pin_root, root_dir, test_type))
-    res = os.popen("cat result.out").read().strip()
-    if ret !=0 or res != "1":
+    
+    res = pintool("./a.out")
+    if res != 1:
         error += 1
         print("WARN: output{}.c not trigger".format(i))
 print("PASS {}/{}".format(cnt - error, cnt))

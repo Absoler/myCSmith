@@ -13,6 +13,10 @@ from enum import Enum
 CompilerType = Enum("CompilerType", ("gcc", "clang", "both", "invalid"))
 
 def pintool(elf_path):
+    ''' -1: runtime error
+        0:  no bug
+        1:  has bug
+    '''
     ret = os.system("timeout -s SIGTERM 5s {}/pin -t {}/checkAccess/obj-intel64/checkAccess.so -- {} {} func ./ 1>/dev/null".format(pin_root, root_dir, elf_path, test_type))
     if ret != 0:
         return -1

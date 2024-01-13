@@ -3,16 +3,18 @@
 opt_option=
 root_dir=
 
-import os, sys, re, json
+import os, sys, re, json, random
+from math import ceil
 sys.path.append("{}/test".format(root_dir))
+from compilerbugs import Bug, CompilerType, pintool
 import compare
-from compilerbugs import Bug, Compiler, CompilerType, pintool
-from enum import Enum
 from itertools import combinations
 import multiprocessing as mp
 
-default_gccoptions_path = "./gccoptions.json"
-default_gccmaxlength_comb = 3
+default_gccoptions_path = "{}/regression/gccoptions.json".format(root_dir)
+default_clangoptions_path = "{}/regression/clangoptions.json".format(root_dir)
+default_maxlength_comb = 2
+default_heuristic_limit = 100
 
 compiler_options_map = {}
 
@@ -49,7 +51,7 @@ def optiter_to_str(optlist):
     return ' '.join([opt.name for opt in optlist])
 
 
-def select_block_options(compiler_name, choices, visit, i):
+def select_block_options(compiler_name:str, oldinfo, choices:list, visit:set, i:int):
     workdir = "{}/regression/select/{}".format(root_dir, i)
     os.system("mkdir -p {}".format(workdir))
     os.chdir(workdir)
@@ -59,16 +61,55 @@ def select_block_options(compiler_name, choices, visit, i):
     for choice in choices:
         if visit.intersection(choice) != set():
             continue
-        option_names = [opt.name for opt in choice]
             
-        os.system("{} ./output.c {} {} -o output 2>/dev/null 1>&2".format(compiler_name, opt_option, ' '.join(option_names)))
-        pintool("./output")
-        res = os.popen("cat result.out").read().strip()
-        if res == "0":
+        ret = os.system("{} ./output.c {} {} -o output 2>/dev/null 1>&2".format(compiler_name, opt_option, optiter_to_str(choice)))
+        res = pintool("./output")
+        info = compare.parse()
+        if ret == 0 and res != 1 and oldinfo == info:
             result.append(choice)
             visit.update(choice)
     
     return result
+
+def select_heuristically(compiler_name:str, oldinfo, opt_list:list, limit:int, i:int):
+    workdir = "{}/regression/select/{}".format(root_dir, i)
+    os.system("mkdir -p {}".format(workdir))
+    os.chdir(workdir)
+    os.system("cp ../output.c ./output.c")
+
+
+    choice = []
+    live_inds = [j for j in range(len(opt_list))]
+    result = []
+    for j in range(limit):
+        
+        while True:
+            choice = []
+            can_del = False
+            while not can_del:
+                live_inds_copy = live_inds.copy()
+                del_ind = random.choice(live_inds_copy)
+                live_inds_copy.remove(del_ind)
+                for live_ind in live_inds:
+                    if live_ind != del_ind:
+                        choice.append(opt_list[live_ind])
+
+                ret = os.system("{} ./output.c {} {} -o output 2>/dev/null 1>&2".format(compiler_name, opt_option, optiter_to_str(choice)))
+                res = pintool("./output")
+                info = compare.parse()
+                if ret == 0 and res != 1 and oldinfo != info:
+                    can_del = True
+                    live_inds.remove(del_ind)
+                if len(live_inds_copy) == 0:
+                    break
+            
+            if not can_del:
+                # fno sequence fail to reduce continually
+                result.append(list(map(opt_list.__getitem__, live_inds)))
+                break
+    
+    return result
+        
 
 class OptionMgr:
     compiler_mgr_map = {}
@@ -99,9 +140,30 @@ class OptionMgr:
         self.sequence = []  # original arguments
         self.checked = False
         self.options = set()    # all options set
+        self.using_opt = False
     
 
     def get_clang_options(self, compiler_name):
+        with open(default_clangoptions_path, "r") as opt_f:
+            options_dict = json.load(opt_f)
+        if compiler_name not in options_dict:
+            print("can't find compiler options of {}".format(compiler_name))
+        options_dict = options_dict[compiler_name]
+
+        if "clang" in options_dict:
+            clang_option_names = options_dict["clang"]
+            for option_name in clang_option_names:
+                self.roots.append(Option(option_name))
+        if "Xclang" in options_dict:
+            Xclang_option_names = options_dict["Xclang"]
+            for option_name in Xclang_option_names:
+                self.roots.append(Option("-Xclang " + option_name))
+        if "mllvm" in options_dict:
+            mllvm_option_names = options_dict["mllvm"]
+            for option_name in mllvm_option_names:
+                self.roots.append(Option("-mllvm " + option_name))
+
+        return
         headerFeat = "Pass Arguments:"
 
         tempdir = os.popen("mktemp -d").read().strip()
@@ -233,7 +295,7 @@ class OptionMgr:
         oldpath = os.getcwd()
         
         # preparation
-        if self.compilerType == CompilerType.gcc:
+        if self.compilerType == CompilerType.gcc or not self.using_opt:
             # prepare test C file
             if not test_file_path:
                 with open("c.c", "w") as cfile:
@@ -252,7 +314,7 @@ class OptionMgr:
             for seq in cur_option_seq_list:
                 seq_str = ' '.join([option.name for option in seq])
                 
-                if self.compilerType == CompilerType.gcc:
+                if self.compilerType == CompilerType.gcc or not self.using_opt:
                     fail = os.system("{} c.c {} {} 2>/dev/null 1>&2".format(self.compiler_name, seq_str, opt_option))
                 elif self.compilerType == CompilerType.clang:
                     fail = os.system("llvm-as </dev/null | {} {} -disable-output 2>/dev/null".format(self.compiler_name.replace("clang", "opt"), seq_str))
@@ -288,19 +350,29 @@ class OptionMgr:
     def select_gcc(self, bug, n = 1):
         '''
         1) remove options that may bring runtime error to program, get a sequence of length n
-        2) try to block problem with disjoint `-fno-` option combinations of size from 1 to 3
+        2) try to block problem with disjoint `-fno-` option combinations of size from 1 to `default_maxlength_comb`
+        3) try to remove useless option from full sequence, selection is random, do `default_heuristic_limit` times
         '''
 
         workdir = "{}/regression/select".format(root_dir)
         os.system("mkdir -p {}".format(workdir))
         os.chdir(workdir)
         os.system("cp {}/regression/caserepo/output{}.c ./output.c".format(root_dir, bug.id))
+        os.system("{} ./output.c {} -o output 2>/dev/null 1>&2".format(self.compiler_name, opt_option))
+        pintool("./output")
+        oldinfo = compare.parse()
 
         print("bug {}".format(bug.id))
         # 1)
         self.checkvalidation("./output.c", True)
         full_seq = self.getseq(True)
         invalid_seq = self.getseq(False)
+        ret = os.system("{} ./output.c {} {} -o output 2>/dev/null 1>&2".format(self.compiler_name, opt_option, optiter_to_str(full_seq)))
+        res = pintool("./output")
+        info = compare.parse()
+        if ret != 0 or res == 1 or info == oldinfo:
+            print("even all fno options can't block the bug {}".format(bug.id))
+            return []
         
         print("#phase 1:    filter valid ({}) options\n".format(len(full_seq)))
         print("valid: {}".format(full_seq))
@@ -310,7 +382,7 @@ class OptionMgr:
         
         visit = set()
         result = []
-        for size in range(1, default_gccmaxlength_comb + 1):
+        for size in range(1, default_maxlength_comb + 1):
             
             res_list = []
             pool = mp.Pool(n)
@@ -321,7 +393,7 @@ class OptionMgr:
                 choices_list[i % n].append(choice)
             
             for i in range(n):
-                res_list.append(pool.apply_async(select_block_options, (self.compiler_name, choices_list[i], visit, i,)))
+                res_list.append(pool.apply_async(select_block_options, (self.compiler_name, oldinfo, choices_list[i], visit, i,)))
             
             pool.close()
             pool.join()
@@ -337,6 +409,27 @@ class OptionMgr:
             option_names = [opt.name for opt in choice]
             print(option_names)
         print()
+
+        # 3)
+        select_heuristically(self.compiler_name, oldinfo, full_seq, 1, 0)
+        heuristic_result = []
+        pool = mp.Pool(n)
+        res_list = []
+        for i in range(n):
+            res_list.append(pool.apply_async(select_heuristically, (self.compiler_name, oldinfo, full_seq, int(default_heuristic_limit/n), i)))
+
+        pool.close()
+        pool.join()
+
+        for res in res_list:
+            heuristic_result.extend(res.get())
+        heuristic_result = list(set([tuple(seq) for seq in heuristic_result]))
+        heuristic_result.sort(key=lambda l : len(l))
+        print("#phase 3:    try {} times heuristic reduction and choose the minimum 5% sequences".format(default_heuristic_limit))
+        for res in heuristic_result:
+            option_names = [opt.name for opt in res]
+            print(option_names)
+        result.extend(heuristic_result[:ceil(default_heuristic_limit/20)])
         return result
 
 
@@ -345,4 +438,8 @@ if __name__ == "__main__":
     caseid = int(sys.argv[1])
     bug = Bug(caseid)
     optionmgr = OptionMgr.get_optionmgr(sys.argv[2])
+    if len(sys.argv) > 3:
+        default_maxlength_comb = int(sys.argv[3])
+    if len(sys.argv) > 4:
+        default_heuristic_limit = int(sys.argv[4])
     optionmgr.select_gcc(bug, 24)

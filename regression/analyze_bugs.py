@@ -282,7 +282,7 @@ def analyze_group(bugs_map, option):
     return (cp_bugs_map_gcc, cp_bugs_map_clang)
 
 
-def validateClang(bugs_map:dict):
+def validateLLVMopt(bugs_map:dict):
     tempdir = "{}/regression/validateclang".format(root_dir)
     if not os.path.exists(tempdir):
         os.mkdir(tempdir)
@@ -315,8 +315,7 @@ def validateClang(bugs_map:dict):
             optionmgr.checkvalidation()
             optlist = optionmgr.getvalidseq()
             options_str = option.optiter_to_str(optlist)
-            os.system("clang-{} output.c -S -Xclang -disable-llvm-passes -emit-llvm -o output.ll >/dev/null 2>&1".format(version))
-            os.system("sed '/[aA]ttr/s/optnone//g' output.ll -i")
+            os.system("clang-{} output.c -S -disable-O0-optnone -Xclang -disable-llvm-passes -emit-llvm -o output.ll >/dev/null 2>&1".format(version))
             os.system("opt-{} output.ll {} -o output.bc >/dev/null 2>&1".format(version, options_str))
             os.system("llc-{} output.bc -filetype=obj -o output.o".format(version))
             os.system("clang-{} output.o -o elf.opt >/dev/null 2>&1".format(version))
@@ -374,7 +373,7 @@ if __name__ == "__main__":
     Compiler.init_bugs(bugs_map)
 
     if args.validateClang:
-        validateClang(bugs_map)
+        validateLLVMopt(bugs_map)
         exit(0)
     
     if args.analyzegroup != -1:

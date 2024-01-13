@@ -6,11 +6,17 @@ from enum import Enum
 
 Stage = Enum("Stage", ('DEFINE', 'FUNCTIONS', 'MAIN'))
 
-infile = open(sys.argv[1], "r")
+if len(sys.argv) == 1:
+    inpath, outpath = "./output2.c", "output2.c"
+elif len(sys.argv) == 2:
+    inpath, outpath = sys.argv[1], sys.argv[1]
+else:
+    inpath, outpath = sys.argv[1], sys.argv[2]
+infile = open(inpath, "r")
 
 re_getvar = re.compile(r'(g_\d+)')
 define = []
-re_getdecl = re.compile(r'^(const)?\s*u?int(8|16|32|64)_t\s*\**(g_\d+)')
+re_getdecl = re.compile(r'^(const)?\s*u?int(8|16|32|64)_t(\s*(const)?\s*\**\s*)*(g_\d+)')
 functions = ""
 main = []
 re_setinfo = re.compile(r'setInfo\(\(unsigned long\)\(&(g_\d+)')
@@ -38,7 +44,7 @@ for line in reversed(define):
     if not mat:
         continue
 
-    var = mat.group(3)
+    var = mat.group(5)
     if var not in functions and var not in refvars:
         deadvars.append(var)
     else:
@@ -48,11 +54,11 @@ for line in reversed(define):
 
 
 infile.close()
-outfile = open(sys.argv[2], "w")
+outfile = open(outpath, "w")
 
 for line in define:
     mat = re_getdecl.match(line)
-    if mat and mat.group(3) in deadvars:
+    if mat and mat.group(5) in deadvars:
         continue
     outfile.write(line)
 
