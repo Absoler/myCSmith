@@ -13,6 +13,7 @@
 
 import sys, os, multiprocessing
 
+root_dir=
 opt_option=
 test_type=
 pin_root=
@@ -55,11 +56,11 @@ def run_csmith(id:int, mod:int, base_lock):
         os.makedirs(cache_prefix)
 
     while case_id < limit:
-        os.system(f"build/src/csmith {type_option} --no-safe-math --no-bitfields --no-volatiles --probability-configuration ./prob.txt  -o runtime/output{id}.c 1>/dev/null")
+        os.system(f"build/src/csmith {type_option} --no-bitfields --no-volatiles --probability-configuration ./prob.txt  -o runtime/output{id}.c 1>/dev/null")
     
         cur_cnt = -1
         for compiler in compilers:
-            ret = os.system(f"{compiler} runtime/output{id}.c -g -w {opt_option} -o runtime/output{id}")
+            ret = os.system(f"{compiler} runtime/output{id}.c -I {root_dir}/runtime -g -w {opt_option} -o runtime/output{id}")
             if ret > 0:
                 print(f"{compiler} compilation error")
                 os.system(f"cp runtime/output{id}.c compileFail/{case_id}output{id}.c")

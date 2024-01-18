@@ -268,7 +268,6 @@ Statement::make_random(CGContext &cg_context,
 	}
 	// XXX: interim ickiness
 	Statement *s = 0;
-    bool flag = false;
 	switch (t) {
 	default:
 		assert(!"unknown Statement type");
@@ -314,7 +313,6 @@ Statement::make_random(CGContext &cg_context,
         s = StatementSwitch::make_random(cg_context);
         break;
 	}
-    cout<<(flag?"hit":"no")<<endl;
 	ERROR_GUARD(NULL);
 	if (is_compound(t)) {
 		cg_context.blk_depth--;

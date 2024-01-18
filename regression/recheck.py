@@ -46,7 +46,7 @@ for i in caseids:
         print("ERROR: missing " + casepath, file=sys.stderr)
     
     if not ":" in compiler:
-        os.system("{} {} {} 2>/dev/null".format(compiler, casepath, opt_option))
+        os.system("{} {} -I{}/runtime/ {} 2>/dev/null".format(compiler, casepath, opt_option))
     else:
         source_dir = ""
         if os.path.exists("{}/regression/docker.volume".format(root_dir)):

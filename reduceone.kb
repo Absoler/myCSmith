@@ -29,7 +29,7 @@ for compiler in ${compilers[*]} ; do
         positive=0
     fi
     
-    $compiler output2.c -g $opt_option -w -o output2
+    $compiler output2.c -I $root_dir/runtime -g $opt_option -w -o output2
     $pin_root/pin -t $root_dir/checkAccess/obj-intel64/checkAccess.so -- ./output2 $test_type func ./ >/dev/null
     
     run_stat=$?

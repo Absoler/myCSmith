@@ -26,7 +26,7 @@ else
     positive=1
     compiler=$positive_compiler
 fi
-$compiler full.c -gdwarf-4 $opt_option -o full >/dev/null 2>info
+$compiler full.c -I $root_dir/runtime -gdwarf-4 $opt_option -o full >/dev/null 2>info
 compile_stat=$?
 if [ $compile_stat -ne 0 ]; then
     # echo "fail due to compilation error: " $compile_stat >> $root_dir/reduce.log

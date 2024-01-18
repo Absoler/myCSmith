@@ -8,7 +8,7 @@
 #   
 #-----
 
-
+root_dir=
 opt_option=
 test_type=
 pin_root=
@@ -37,10 +37,10 @@ run_err=0
 while [ $cnt -lt $limit ]
 # while true
 do
-    build/src/csmith $type_option --no-safe-math --no-bitfields --no-volatiles --probability-configuration ./prob.txt  -o runtime/output2.c 1>/dev/null
+    build/src/csmith $type_option --no-bitfields --no-volatiles --probability-configuration ./prob.txt  -o runtime/output2.c 1>/dev/null
     fail=0  # fail flag
     for compiler in ${compilers[*]} ; do
-        $compiler runtime/output2.c -g -w $opt_option -o runtime/output2
+        $compiler runtime/output2.c -I$root_dir/runtime -g -w $opt_option -o runtime/output2
         if [ $? -gt 0 ] ; then
             echo $compiler compilation error
             cp runtime/output2.c compileFail/${cnt}output2.c

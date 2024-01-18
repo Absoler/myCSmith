@@ -369,7 +369,6 @@ main(int argc, char **argv)
 	CGOptions::set_default_settings();
 	CGOptions::bitfields(false);
 	CGOptions::volatiles(false);
-	CGOptions::avoid_signed_overflow(false);
 	printf("\n\ncurrent seed: %lu\n", g_Seed);
 	for (int i=1; i<argc; i++) {
         if (strcmp (argv[i], "--copyPropagation") == 0 ){

@@ -62,7 +62,7 @@ def select_block_options(compiler_name:str, oldinfo, choices:list, visit:set, i:
         if visit.intersection(choice) != set():
             continue
             
-        ret = os.system("{} ./output.c {} {} -o output 2>/dev/null 1>&2".format(compiler_name, opt_option, optiter_to_str(choice)))
+        ret = os.system("{} ./output.c -I{}/runtime/ {} {} -o output 2>/dev/null 1>&2".format(compiler_name, root_dir, opt_option, optiter_to_str(choice)))
         res = pintool("./output")
         info = compare.parse()
         if ret == 0 and res != 1 and oldinfo == info:
@@ -94,7 +94,7 @@ def select_heuristically(compiler_name:str, oldinfo, opt_list:list, limit:int, i
                     if live_ind != del_ind:
                         choice.append(opt_list[live_ind])
 
-                ret = os.system("{} ./output.c {} {} -o output 2>/dev/null 1>&2".format(compiler_name, opt_option, optiter_to_str(choice)))
+                ret = os.system("{} ./output.c -I{}/runtime/ {} {} -o output 2>/dev/null 1>&2".format(compiler_name, root_dir, opt_option, optiter_to_str(choice)))
                 res = pintool("./output")
                 info = compare.parse()
                 if ret == 0 and res != 1 and oldinfo != info:
@@ -315,7 +315,7 @@ class OptionMgr:
                 seq_str = ' '.join([option.name for option in seq])
                 
                 if self.compilerType == CompilerType.gcc or not self.using_opt:
-                    fail = os.system("{} c.c {} {} 2>/dev/null 1>&2".format(self.compiler_name, seq_str, opt_option))
+                    fail = os.system("{} -I{}/runtime/ c.c {} {} 2>/dev/null 1>&2".format(self.compiler_name, root_dir, seq_str, opt_option))
                 elif self.compilerType == CompilerType.clang:
                     fail = os.system("llvm-as </dev/null | {} {} -disable-output 2>/dev/null".format(self.compiler_name.replace("clang", "opt"), seq_str))
                     if not fail:
@@ -367,7 +367,7 @@ class OptionMgr:
         self.checkvalidation("./output.c", True)
         full_seq = self.getseq(True)
         invalid_seq = self.getseq(False)
-        ret = os.system("{} ./output.c {} {} -o output 2>/dev/null 1>&2".format(self.compiler_name, opt_option, optiter_to_str(full_seq)))
+        ret = os.system("{} ./output.c -I{}/runtime/ {} {} -o output 2>/dev/null 1>&2".format(self.compiler_name, root_dir, opt_option, optiter_to_str(full_seq)))
         res = pintool("./output")
         info = compare.parse()
         if ret != 0 or res == 1 or info == oldinfo:

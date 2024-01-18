@@ -12,10 +12,10 @@ pin_root=
 root_dir=
 
 
-def gencases(pnum:int, mod:int, limit:int):
-    ids = [i*mod + pnum for i in range(int(limit/mod))]
+def gencases(pnum:int, mod:int, limit:int, genbase:int):
+    ids = [i*mod + pnum + genbase for i in range(int(limit/mod))]
     for id in ids:
-        os.system("{}/build/src/csmith {} --no-safe-math --no-bitfields --no-volatiles --probability-configuration {}/prob.txt  -o caserepo/output{}.c 1>/dev/null".format(root_dir, type_option, root_dir, id))
+        os.system("{}/build/src/csmith {} --no-bitfields --no-volatiles --probability-configuration {}/prob.txt  -o caserepo/output{}.c 1>/dev/null".format(root_dir, type_option, root_dir, id))
         if (id-pnum) % 1000 == 0:
             print("generate {} cases".format(id))
 
@@ -27,7 +27,7 @@ def runtests(ids:list, resfile_lock):
         os.system("cp {}/regression/caserepo/output{}.c {}".format(root_dir, id, casepath))
         if not os.path.exists(casepath):
             print("ERROR: missing " + casepath, file=sys.stderr)
-        os.system("{} {} {} 2>/dev/null".format(compiler, casepath, opt_option))
+        os.system("{} {} -I{}/runtime {} 2>/dev/null".format(compiler, casepath, root_dir, opt_option))
         res = pintool("./a.out")
         if res == 1:
             resfile_lock.acquire()
@@ -40,7 +40,10 @@ def runtests(ids:list, resfile_lock):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="some practicals functions for test")
+    # generation part
     parser.add_argument("--generate", "-gen", default=-1, help="only generate [NUM] test cases in ./caserepo", type=int)
+    parser.add_argument("--base", "-b", default=0, type=int, help="indicate where generated cases number from")
+    # test part
     parser.add_argument("--range", "-r", default="-1", help="specify test range, `integer` or `integer-integer` which indicates [lo, hi)")
     parser.add_argument("--test", default="", help="specify compiler, count number of triggered case, use -gen to specify test range")
     parser.add_argument("--nproc", "-n", default=1, type=int, help="allow n jobs at once, available for generate")
@@ -49,6 +52,7 @@ if __name__ == "__main__":
 
     n = int(args.nproc)
     gen = int(args.generate)
+    base = int(args.base)
     # generate test cases
     if gen != -1:
         if test_type == "0":
@@ -60,7 +64,7 @@ if __name__ == "__main__":
         # if `n` doesn't divide `gen`, generate int(gen/n)*n cases
         jobs = []
         for i in range(n):
-            jobs.append(mp.Process(target=gencases, args=(i, n, gen)))
+            jobs.append(mp.Process(target=gencases, args=(i, n, gen, base)))
             jobs[i].start()
         for i in range(n):
             jobs[i].join()

@@ -14,7 +14,7 @@ host_root_dir=
 # --------------------------------------
 
 if [[ $1 =~ - ]] ; then
-    $1 output2.c -gdwarf-4 $opt_option -w -o output2
+    $1 output2.c -I $root_dir/runtime -gdwarf-4 $opt_option -w -o output2
 else
     if [ $# -lt 2 ] ; then echo "need input mount position!" ; fi
     cwd=`pwd`
