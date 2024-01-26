@@ -98,7 +98,7 @@ class Compiler:
                 compiler = Compiler.get(compiler_name)
                 if compiler.compilerType == CompilerType.gcc:
                     id = cls.gccs.index(compiler)
-                elif compiler.compilerType == CompilerType:
+                elif compiler.compilerType == CompilerType.clang:
                     id = cls.clangs.index(compiler)
                 compilerHash += (1<<id)
 

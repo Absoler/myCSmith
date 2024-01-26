@@ -16,12 +16,12 @@ infile = open(inpath, "r")
 
 re_getvar = re.compile(r'(g_\d+)')
 define = []
-re_getdecl = re.compile(r'^(const)?\s*u?int(8|16|32|64)_t(\s*(const)?\s*\**\s*)*(g_\d+)')
+re_getdecl = re.compile(r'^(const)?\s*(u?int(8|16|32|64)_t|struct\s*S\d+|union\s*U\d+)(\s*(const)?\s*\**\s*)*(g_\d+)')
 functions = ""
 main = []
 re_setinfo = re.compile(r'setInfo\(\(unsigned long\)\(&(g_\d+)')
 re_setreadcnt = re.compile(r'setReadCnt\(\(unsigned long\)\(&(g_\d+)')
-re_side = re.compile(r'side=\(side\+\(unsigned long\)(g_\d+)')
+re_side = re.compile(r'side=\(side\+\(unsigned long\)&?(g_\d+)')
 
 stage = Stage.DEFINE
 for line in infile.readlines():
@@ -44,7 +44,7 @@ for line in reversed(define):
     if not mat:
         continue
 
-    var = mat.group(5)
+    var = mat.group(6)
     if var not in functions and var not in refvars:
         deadvars.append(var)
     else:
@@ -58,7 +58,7 @@ outfile = open(outpath, "w")
 
 for line in define:
     mat = re_getdecl.match(line)
-    if mat and mat.group(5) in deadvars:
+    if mat and mat.group(6) in deadvars:
         continue
     outfile.write(line)
 
@@ -75,7 +75,8 @@ for line in main:
         if var in deadvars:
             continue
 
-    elif line.lstrip().startswith("side=(side+(unsigned long)g_"):
+    elif line.lstrip().startswith("side=(side+(unsigned long)g_") or\
+        line.lstrip().startswith("side=(side+(unsigned long)&"):
         var = re_side.match(line.lstrip()).group(1)
         if var in deadvars:
             continue
