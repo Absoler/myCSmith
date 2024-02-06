@@ -20,6 +20,7 @@ cd $dir
 cp $1 output2.c
 
 #   check and set compilers constraints
+> $root_dir/reducecondition
 compilers=(${2//:/ })
 for compiler in ${compilers[*]} ; do
     echo $compiler >> $root_dir/reducecondition
@@ -29,7 +30,7 @@ for compiler in ${compilers[*]} ; do
         positive=0
     fi
     
-    $compiler output2.c -I $root_dir/runtime -g $opt_option -w -o output2
+    ${compiler//+/ } output2.c -I $root_dir/runtime -g $opt_option -w -o output2
     $pin_root/pin -t $root_dir/checkAccess/obj-intel64/checkAccess.so -- ./output2 $test_type func ./ >/dev/null
     
     run_stat=$?
@@ -37,14 +38,11 @@ for compiler in ${compilers[*]} ; do
         echo fail to run bianry compiled by $compiler
         exit 1
     fi
-    if [ $positive -eq 1 ] ; then
-        cp descript.out $root_dir/test/descript.positive
-    fi
+    
+    cp descript.out $root_dir/test/descript.$compiler
 done
 $root_dir/test/pl.pl output2.c
 cp $root_dir/test/define.c full.c
 cat $root_dir/test/target.c >> full.c
 cat $root_dir/test/main.c >> full.c
 mv full.c $3
-rm $root_dir/test/descript.positive
-> $root_dir/reducecondition

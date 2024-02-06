@@ -6,7 +6,7 @@ root_dir=
 import os, sys, re, json, random
 from math import ceil
 sys.path.append("{}/test".format(root_dir))
-from compilerbugs import Bug, CompilerType, pintool
+from compilerbugs import Bug, CompilerType, pintool, Compiler
 import compare
 from itertools import combinations
 import multiprocessing as mp
@@ -65,9 +65,25 @@ def select_block_options(compiler_name:str, oldinfo, choices:list, visit:set, i:
         ret = os.system("{} ./output.c -I{}/runtime/ {} {} -o output 2>/dev/null 1>&2".format(compiler_name, root_dir, opt_option, optiter_to_str(choice)))
         res = pintool("./output")
         info = compare.parse()
-        if ret == 0 and res != 1 and oldinfo == info:
+        if ret == 0 and oldinfo != info:
             result.append(choice)
             visit.update(choice)
+    
+    return result
+
+def select_trigger_options(compiler_name:str, oldinfo, choices:list, i:int):
+    workdir = "{}/regression/select/{}".format(root_dir, i)
+    os.system("mkdir -p {}".format(workdir))
+    os.chdir(workdir)
+    os.system("cp ../output.c ./output.c")
+    
+    result = []
+    for choice in choices:
+        ret = os.system("{} ./output.c -I{}/runtime/ {} {} -o output 2>/dev/null 1>&2".format(compiler_name, root_dir, opt_option, ' '.join(choice)))
+        res = pintool("./output")
+        info = compare.parse()
+        if ret == 0 and oldinfo == info:
+            result.append(choice)
     
     return result
 
@@ -97,7 +113,7 @@ def select_heuristically(compiler_name:str, oldinfo, opt_list:list, limit:int, i
                 ret = os.system("{} ./output.c -I{}/runtime/ {} {} -o output 2>/dev/null 1>&2".format(compiler_name, root_dir, opt_option, optiter_to_str(choice)))
                 res = pintool("./output")
                 info = compare.parse()
-                if ret == 0 and res != 1 and oldinfo != info:
+                if ret == 0 and oldinfo != info:
                     can_del = True
                     live_inds.remove(del_ind)
                 if len(live_inds_copy) == 0:
@@ -109,7 +125,7 @@ def select_heuristically(compiler_name:str, oldinfo, opt_list:list, limit:int, i
                 break
     
     return result
-        
+
 
 class OptionMgr:
     compiler_mgr_map = {}
@@ -370,7 +386,7 @@ class OptionMgr:
         ret = os.system("{} ./output.c -I{}/runtime/ {} {} -o output 2>/dev/null 1>&2".format(self.compiler_name, root_dir, opt_option, optiter_to_str(full_seq)))
         res = pintool("./output")
         info = compare.parse()
-        if ret != 0 or res == 1 or info == oldinfo:
+        if ret != 0 or info == oldinfo:
             print("even all fno options can't block the bug {}".format(bug.id))
             return []
         
@@ -409,9 +425,10 @@ class OptionMgr:
             option_names = [opt.name for opt in choice]
             print(option_names)
         print()
+        return result
 
         # 3)
-        select_heuristically(self.compiler_name, oldinfo, full_seq, 1, 0)
+        # select_heuristically(self.compiler_name, oldinfo, full_seq, 1, 0)
         heuristic_result = []
         pool = mp.Pool(n)
         res_list = []
@@ -432,6 +449,65 @@ class OptionMgr:
         result.extend(heuristic_result[:ceil(default_heuristic_limit/20)])
         return result
 
+''' try select the option combinations that can trigger this bug on other compiler versions
+    1) get the oracle `info` and compilers and their options to be tested
+    2) test their combinations from 1 to default_maxlength_comb
+'''
+def select_migration(bug, n = 1):
+    
+    if bug.compilerType != CompilerType.gcc:
+        return
+    # 1)
+    workdir = "{}/regression/select".format(root_dir)
+    os.system("mkdir -p {}".format(workdir))
+    os.chdir(workdir)
+    os.system("cp {}/regression/caserepo/output{}.c ./output.c".format(root_dir, bug.id))
+    oldinfo = bug.info
+    existed_compiler_names = Compiler.uncompress(bug.compilerHash, CompilerType.gcc)
+    
+    with open(default_gccoptions_path, "r") as opt_f:
+        options_dict = json.load(opt_f)
+    for existed_compiler_name in existed_compiler_names:
+        options_dict.pop(existed_compiler_name)
+    
+    if len(options_dict) == 0:
+        return
+    
+    # 2)
+    result = {}
+    print("... testing {}".format(bug.id))
+    
+    for compiler_name in options_dict:
+        exist = os.system("which {}".format(compiler_name))
+        if exist != 0:
+            continue
+        res_list = []
+        pool = mp.Pool(n)
+        # choices = [[option] for option in options_dict[compiler_name]]
+        choices = [["-fno-" + option[2:]] for option in options_dict[compiler_name]]
+        # choices.extend(list(combinations(options_dict[compiler_name], 2)))
+        choices_list = [[] for i in range(n)]
+        for i, choice in enumerate(choices):
+            choices_list[i % n].append(choice)
+        
+        for i in range(n):
+            res_list.append(pool.apply_async(select_trigger_options, (compiler_name, oldinfo, choices_list[i], i)))
+        
+        pool.close()
+        pool.join()
+
+        result[compiler_name] = []
+        for res in res_list:
+            result[compiler_name].extend(res.get())
+
+    for compiler_name in result:
+        if len(result[compiler_name]) == 0:
+            continue
+        print("{} can trigger with".format(compiler_name))
+        for opt in result[compiler_name]:
+            print(opt)
+
+    return result
 
 
 if __name__ == "__main__":

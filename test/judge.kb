@@ -26,7 +26,7 @@ else
     positive=1
     compiler=$positive_compiler
 fi
-$compiler full.c -I $root_dir/runtime -gdwarf-4 $opt_option -o full >/dev/null 2>info
+${compiler//+/ } full.c -I $root_dir/runtime -gdwarf-4 $opt_option -o full >/dev/null 2>info
 compile_stat=$?
 if [ $compile_stat -ne 0 ]; then
     # echo "fail due to compilation error: " $compile_stat >> $root_dir/reduce.log
@@ -45,9 +45,9 @@ if [ $run_stat -ne 0 ]; then
     exit 1
 fi
 
-$root_dir/test/compare.py ./descript.out $root_dir/test/descript.positive
+$root_dir/test/compare.py ./descript.out $root_dir/test/descript.$compiler
 
-if [ $? -eq $positive ] ; then
+if [ $? -ne 0 ] ; then
     exit 1
 fi
 exit 0

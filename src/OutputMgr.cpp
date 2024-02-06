@@ -395,7 +395,7 @@ typedef unsigned long int uint64_t;\n";
 
 	//output signal handler
 	//now for record of infinite loop
-    out << "#include \"csmith.h\"\n";
+    out << "#include \"my_safe_math.h\"\n";
 	out << "#include <stdlib.h>\n";
 	out << "#include <signal.h>\n";
 	out << "#include <stdio.h>\n";

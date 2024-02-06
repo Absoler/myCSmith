@@ -43,6 +43,7 @@ gcc_dirs = [ "{}/regression/result/{}".format(root_dir, gcc_dir) for gcc_dir in 
 clang_dirs = [ "{}/regression/result/{}".format(root_dir, clang_dir) for clang_dir in regression_files if "clang" in clang_dir ]
 
 default_bugs_path = "{}/regression/bugs.json".format(root_dir)
+default_bugs_out_path = "{}/regression/bugs.out.json".format(root_dir)
 default_merge_path = "{}/regression/mergebugs.json".format(root_dir)
 visit_compile_names = set() # record checked compilers, avoid redundant check
 
@@ -112,9 +113,9 @@ def init_bugs():
     print("init {} bugs in total".format(len(bugs_map)))
     return bugs_map
 
-def save_bugs(bugs_map, save_path = default_bugs_path):
+def save_bugs(bugs_map, save_path = default_bugs_out_path):
     if not save_path:
-        save_path = default_bugs_path
+        save_path = default_bugs_out_path
     bugs_file = open(save_path, "w")
     bugs_json = []
     for bug in bugs_map:
@@ -346,12 +347,14 @@ if __name__ == "__main__":
     parser.add_argument("--nproc", "-n", default=1, type=int, help="allow n jobs at once")
     parser.add_argument("--output", "-o", default="", help="specfiy dump path")
     parser.add_argument("--input", "-i", default="", help="specify the input bugs file")
+    parser.add_argument("--singlecase", "-s", default="output2.c", help="only test a single case and output its bug json file")
 
 
     parser.add_argument("--analyzegroup", "-ag", default=-1, type=int, help="group bugs by compiler hash, specify constraints by bit num, `0x1` is regression, `0x2` cares newest version")
     parser.add_argument("--validateClang", "-vC", action="store_true", help="check whether `clang` and `opt` trigger the same optimization bug")
     parser.add_argument("--reducegcc", "-rg", action="store_true", help="find the minimum option combination that blocks gcc bug")
     parser.add_argument("--reduceclang", "-rc", action="store_true", help="find the minimum option combination that blocks clang bug")
+    parser.add_argument("--migrategcc", action="store_true")
     args = parser.parse_args()
 
     if args.init:
@@ -387,6 +390,14 @@ if __name__ == "__main__":
             optionmgr.select_gcc(bug, nproc)
         exit(0)
 
+    if args.migrategcc:
+        if args.analyzegroup == -1:
+            bugs = list(bugs_map.keys())
+        else:
+            bugs = list(itertools.chain(*cp_bugs_map_gcc.values()))
+        for bug in bugs:
+            result = option.select_migration(bug, nproc)
+        exit(0)
 
     if args.testlocal:
         results_queue = mp.Queue()
