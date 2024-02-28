@@ -9,7 +9,7 @@
 #-----
 
 root_dir=
-opt_option=
+default_option=
 pin_root=
 test_type=
 
@@ -21,7 +21,7 @@ cat $root_dir/test/main.c >> full.c
 
 compiler=icc
 
-$compiler full.c -g $opt_option -o full >/dev/null 2>info
+$compiler full.c -g $default_option -o full >/dev/null 2>info
 compile_stat=$?
 if [ $compile_stat -ne 0 ]; then
     # echo "fail due to compilation error: " $compile_stat >> $root_dir/reduce.log

@@ -6,9 +6,9 @@
 
 import sys, os
 import argparse
-from compilerbugs import pintool
+from compilerbugs import pintool, compile
 
-opt_option=
+default_option=
 test_type=
 pin_root=
 root_dir=
@@ -46,7 +46,7 @@ for i in caseids:
         print("ERROR: missing " + casepath, file=sys.stderr)
     
     if not ":" in compiler:
-        os.system("{} {} -I{}/runtime/ {} 2>/dev/null".format(compiler, casepath, opt_option))
+        compile(compiler, casepath)
     else:
         source_dir = ""
         if os.path.exists("{}/regression/docker.volume".format(root_dir)):
@@ -58,7 +58,7 @@ for i in caseids:
             print("ERROR: no valid test path, should be accessible from the host")
             exit(1)
         compiler_prefix = compiler.split(":")[0]
-        os.system("docker run --rm -v {}:/root -w /root {} {} /root/output.c {} -g".format(source_dir, compiler, compiler_prefix, opt_option))
+        os.system("docker run --rm -v {}:/root -w /root {} {} /root/output.c {} -g".format(source_dir, compiler, compiler_prefix, default_option))
     
     res = pintool("./a.out")
     if res != 1:

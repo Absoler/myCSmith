@@ -49,7 +49,7 @@ sum=${#files[*]}
 #
 # ----------------------------------------
 
-opt_option=
+default_option=
 
 if [ $# -ge 1 ] ; then
     add_binary_check=$1
@@ -103,7 +103,7 @@ for file in ${files[*]} ; do
                     mkdir test
                 fi
                 cp ../patterns/$file test/output2.c
-                $compiler test/output2.c $opt_option -g -o test/output2
+                $compiler test/output2.c $default_option -g -o test/output2
                 python3 /home/patcher/tool.py test/output2.c $check > test/output2.json
                 python3 /home/DFchecker/checker.py test/output2 test/output2.json
                 if [ $? -eq 0 ] ; then

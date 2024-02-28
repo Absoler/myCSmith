@@ -14,7 +14,7 @@
 import sys, os, multiprocessing
 
 root_dir=
-opt_option=
+default_option=
 test_type=
 pin_root=
 
@@ -60,7 +60,7 @@ def run_csmith(id:int, mod:int, base_lock):
     
         cur_cnt = -1
         for compiler in compilers:
-            ret = os.system(f"{compiler} runtime/output{id}.c -I {root_dir}/runtime -g -w {opt_option} -o runtime/output{id}")
+            ret = os.system(f"{compiler} runtime/output{id}.c -I {root_dir}/runtime -g -w {default_option} -o runtime/output{id}")
             if ret > 0:
                 print(f"{compiler} compilation error")
                 os.system(f"cp runtime/output{id}.c compileFail/{case_id}output{id}.c")

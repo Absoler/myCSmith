@@ -9,7 +9,7 @@
 #-----
 
 root_dir=
-opt_option=
+default_option=
 test_type=
 pin_root=
 
@@ -40,7 +40,7 @@ do
     build/src/csmith $type_option --no-bitfields --no-volatiles --probability-configuration ./prob.txt  -o runtime/output2.c 1>/dev/null
     fail=0  # fail flag
     for compiler in ${compilers[*]} ; do
-        $compiler runtime/output2.c -I$root_dir/runtime -g -w $opt_option -o runtime/output2
+        $compiler runtime/output2.c -I$root_dir/runtime -g -w $default_option -o runtime/output2
         if [ $? -gt 0 ] ; then
             echo $compiler compilation error
             cp runtime/output2.c compileFail/${cnt}output2.c

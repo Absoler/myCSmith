@@ -34,7 +34,7 @@ fi
 if [ $# -lt 1 ] ; then
     for file in ${scripts[*]} ; do
         sed "s%^\(\$\?root_dir=\).*%\1%" $file -i.bak
-        sed "s%^\(\$\?opt_option=\).*%\1%" $file -i.bak
+        sed "s%^\(\$\?default_option=\).*%\1%" $file -i.bak
         sed "s%^\(\$\?test_type=\).*%\1%" $file -i.bak
         sed "s%^\(\$\?pin_root=\).*%\1%" $file -i.bak
         sed "s%^\(\$\?gcc_name=\).*%\1%" $file -i.bak
@@ -63,10 +63,10 @@ done
 
 # set optimization option
 for file in ${kb_scripts[*]} ; do
-    sed "s%^\(opt_option=\).*%\1$1%" $file -i.bak
+    sed "s%^\(default_option=\).*%\1$1%" $file -i.bak
 done
 for file in ${py_scripts[*]} ; do
-    sed "s%^\(opt_option=\).*%\1\"$1\"%" $file -i.bak
+    sed "s%^\(default_option=\).*%\1\"$1\"%" $file -i.bak
 done
 
 # choose test target: load or store

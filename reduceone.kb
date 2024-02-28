@@ -1,7 +1,7 @@
 #!/bin/bash
 
 root_dir=
-opt_option=
+default_option=
 test_type=
 pin_root=
 
@@ -30,7 +30,12 @@ for compiler in ${compilers[*]} ; do
         positive=0
     fi
     
-    ${compiler//+/ } output2.c -I $root_dir/runtime -g $opt_option -w -o output2
+    if [[ $compiler =~ -O ]] ; then
+        temp_default_option=""
+    else
+        temp_default_option=$default_option
+    fi
+    ${compiler//+/ } output2.c -I $root_dir/runtime -g $temp_default_option -w -o output2
     $pin_root/pin -t $root_dir/checkAccess/obj-intel64/checkAccess.so -- ./output2 $test_type func ./ >/dev/null
     
     run_stat=$?

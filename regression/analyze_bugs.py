@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-opt_option=
+default_option=
 test_type=
 pin_root=
 root_dir=
@@ -36,96 +36,9 @@ sys.path.append("{}/test".format(root_dir))
 import compare
 import multiprocessing as mp
 import option
+from handledata import load_bugs, init_bugs, save_bugs, merge_bugs
 
-
-regression_files = os.listdir("{}/regression/result".format(root_dir))
-gcc_dirs = [ "{}/regression/result/{}".format(root_dir, gcc_dir) for gcc_dir in regression_files if "gcc" in gcc_dir ]
-clang_dirs = [ "{}/regression/result/{}".format(root_dir, clang_dir) for clang_dir in regression_files if "clang" in clang_dir ]
-
-default_bugs_path = "{}/regression/bugs.json".format(root_dir)
-default_bugs_out_path = "{}/regression/bugs.out.json".format(root_dir)
-default_merge_path = "{}/regression/mergebugs.json".format(root_dir)
 visit_compile_names = set() # record checked compilers, avoid redundant check
-
-
-
-''' 
-    Args:
-        implicit the file "./bugs.json"
-    
-    Return:
-        a dict, mapping `Bug` object to its relative compilers names (a list)
-
-'''
-def load_bugs(bugs_path = default_bugs_path):
-    if not bugs_path:
-        bugs_path = default_bugs_path
-    bugs_file = open(bugs_path, "r")
-    bugs_json = json.load(bugs_file)
-    bugs_map = {}
-    for bug_json in bugs_json:
-        bug = Bug.fromdict(bug_json)
-        rela_compilers = bug_json["rela_compilers"]
-        bugs_map[bug] = rela_compilers
-    return bugs_map
-
-
-def merge_bugs(bugs_map_list:list):
-    if len(bugs_map_list) == 1:
-        return bugs_map_list[0]
-    
-    bugs_ret = bugs_map_list[1]
-    
-    # check, may be unnecessary
-    bugs = set(bugs_ret.keys())
-    for bugs_map in bugs_map_list[1:]:
-        assert(set(bugs_map.keys()) == bugs)
-    
-    for bugs_map in bugs_map_list[1:]:
-        for bug in bugs:
-            for cp in bugs_map[bug]:    # cp is compiler
-                if cp not in bugs_ret[bug]:
-                    bugs_ret[bug].append(cp)
-    return bugs_ret
-
-
-def init_bugs():
-    bugs_map = {}
-    descript_re = re.compile(r"(gcc|clang)\-([\d\.]+)_(\d+)descript.out")
-    if os.path.exists(default_bugs_path):
-        print("WARN: bugs file existed, no need for init")
-        return load_bugs()
-    
-    compiler_dirs = gcc_dirs + clang_dirs
-    for compiler_dir in compiler_dirs:
-        compiler_files = os.listdir(compiler_dir)
-        for file in compiler_files:
-            if file.endswith("descript.out"):
-                matchObj = descript_re.match(file)
-                compiler, caseid = matchObj.group(1) + "-" + matchObj.group(2), int(matchObj.group(3))
-                bug = Bug(caseid, info = compare.parse("{}/{}".format(compiler_dir, file)))
-                if bug in bugs_map:
-                    bugs_map[bug].append(compiler)
-                else:
-                    bugs_map[bug] = [compiler]
-    
-    save_bugs(bugs_map)
-    print("init {} bugs in total".format(len(bugs_map)))
-    return bugs_map
-
-def save_bugs(bugs_map, save_path = default_bugs_out_path):
-    if not save_path:
-        save_path = default_bugs_out_path
-    bugs_file = open(save_path, "w")
-    bugs_json = []
-    for bug in bugs_map:
-        bug_json = dict(bug)
-        bug_json["rela_compilers"] = bugs_map[bug]
-        bugs_json.append(bug_json)
-    json.dump(bugs_json, bugs_file, indent=4)
-    bugs_file.close()
-
-
 
 ''' this function is used to test more compilers on existed bugs,
     and extend triggered bug list
@@ -166,7 +79,7 @@ def test_docker(image_names:list, bugs_map):
             caseid = bug.id
             casepath = "{}/regression/caserepo/output{}.c".format(root_dir, caseid)
             os.system("cp {} output.c".format(casepath))
-            ret = os.system("docker run --rm -v {}:/root -w /root {} {} /root/output.c {} 2>/dev/null".format(source_dir, compiler_image, compiler_prefix, opt_option))
+            ret = os.system("docker run --rm -v {}:/root -w /root {} {} /root/output.c {} 2>/dev/null".format(source_dir, compiler_image, compiler_prefix, default_option))
             if ret != 0:
                 print("WARN: {} fail to compile {} with docker image".format(compiler_image, casepath))
                 continue
@@ -210,7 +123,7 @@ def test_local(pnum:int, compiler_names, inputpath:str, queue):
             caseid = bug.id
             casepath = "{}/regression/caserepo/output{}.c".format(root_dir, caseid)
             os.system("cp {} output{}.c".format(casepath, caseid))
-            ret = os.system("{} output{}.c {} -g 2>/dev/null".format(compiler_name, caseid, opt_option))
+            ret = os.system("{} output{}.c {} -g 2>/dev/null".format(compiler_name, caseid, default_option))
             if ret != 0:
                 print("WARN: {} fail to compile {}".format(compiler, casepath))
                 continue
@@ -310,7 +223,7 @@ def validateLLVMopt(bugs_map:dict):
             res[compiler_name][1] += 1
 
             version = Compiler.get(compiler_name).version
-            os.system("{} output.c {} -o elf.clang >/dev/null 2>&1".format(compiler_name, opt_option))
+            os.system("{} output.c {} -o elf.clang >/dev/null 2>&1".format(compiler_name, default_option))
             
             optionmgr = option.OptionMgr.get_optionmgr(compiler_name)
             optionmgr.checkvalidation()
@@ -396,7 +309,7 @@ if __name__ == "__main__":
         else:
             bugs = list(itertools.chain(*cp_bugs_map_gcc.values()))
         for bug in bugs:
-            result = option.select_migration(bug, nproc)
+            result = option.select_migration(bug, option.OptionType.main, nproc)
         exit(0)
 
     if args.testlocal:

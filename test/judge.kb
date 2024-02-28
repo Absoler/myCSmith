@@ -7,7 +7,7 @@
 #-----
 
 root_dir=
-opt_option=
+default_option=
 pin_root=
 test_type=
 # `positive_compiler` or `negative_compiler` should be defined,
@@ -26,7 +26,12 @@ else
     positive=1
     compiler=$positive_compiler
 fi
-${compiler//+/ } full.c -I $root_dir/runtime -gdwarf-4 $opt_option -o full >/dev/null 2>info
+if [[ $compiler =~ -O ]] ; then
+    temp_default_option=""
+else
+    temp_default_option=$default_option
+fi
+${compiler//+/ } full.c -I $root_dir/runtime -gdwarf-4 $temp_default_option -o full >/dev/null 2>info
 compile_stat=$?
 if [ $compile_stat -ne 0 ]; then
     # echo "fail due to compilation error: " $compile_stat >> $root_dir/reduce.log

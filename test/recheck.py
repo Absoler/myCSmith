@@ -5,14 +5,14 @@
 
 '''
 
-opt_option=
+default_option=
 test_type=
 pin_root=
 root_dir=
 
 import sys, os
 sys.path.append("{}/regression".format(root_dir))
-from compilerbugs import pintool
+from compilerbugs import pintool, compile
 
 compilers = sys.argv[1].split(":")
 
@@ -23,7 +23,12 @@ for compiler in compilers:
     positive = 0 if compiler.startswith("~") else 1
     compiler = compiler[1:] if not positive else compiler
 
-    ret = os.system("{} output2.c -I {}/runtime -gdwarf-4 {} -w -o output2".format(compiler.replace('+', ' '), root_dir, opt_option))
+    if '+' in compiler:
+        compiler, extra_opt = compiler.split('+')
+        extra_opt += " " + "-w -gdwarf-4"
+    else:
+        extra_opt = "-w -gdwarf-4"
+    ret = compile(compiler, extra_opt, "./output2.c", "output2")
     if ret != 0:
         print("fail to compile with {}".format(compiler))
         exit(1)

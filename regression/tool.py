@@ -6,7 +6,7 @@ import sys
 import multiprocessing as mp
 from compilerbugs import pintool
 
-opt_option=
+default_option=
 test_type=
 pin_root=
 root_dir=
@@ -27,7 +27,7 @@ def runtests(ids:list, resfile_lock):
         os.system("cp {}/regression/caserepo/output{}.c {}".format(root_dir, id, casepath))
         if not os.path.exists(casepath):
             print("ERROR: missing " + casepath, file=sys.stderr)
-        os.system("{} {} -I{}/runtime {} 2>/dev/null".format(compiler, casepath, root_dir, opt_option))
+        os.system("{} {} -I{}/runtime {} 2>/dev/null".format(compiler, casepath, root_dir, default_option))
         res = pintool("./a.out")
         if res == 1:
             resfile_lock.acquire()

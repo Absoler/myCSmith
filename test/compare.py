@@ -25,7 +25,7 @@ class Var:
         else:
             return True
     def __hash__(self) -> int:
-        return hash(self.name) + hash(self.expect) + hash(self.actual)
+        return hash(self.name) + hash(self.expect) + hash(self.actual) + hash(self.len)
     
     def keys(self):
         return ("name", "len", "expect", "actual", "insts")

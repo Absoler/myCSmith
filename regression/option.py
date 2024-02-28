@@ -1,15 +1,20 @@
 #!/usr/bin/python3
 
-opt_option=
+default_option=
 root_dir=
 
 import os, sys, re, json, random
 from math import ceil
 sys.path.append("{}/test".format(root_dir))
-from compilerbugs import Bug, CompilerType, pintool, Compiler
+from compilerbugs import Bug, CompilerType, pintool, Compiler, compile
 import compare
 from itertools import combinations
 import multiprocessing as mp
+from enum import Enum
+class OptionType(Enum):
+    f = 0,
+    fno = 1,
+    main = 2
 
 default_gccoptions_path = "{}/regression/gccoptions.json".format(root_dir)
 default_clangoptions_path = "{}/regression/clangoptions.json".format(root_dir)
@@ -62,7 +67,7 @@ def select_block_options(compiler_name:str, oldinfo, choices:list, visit:set, i:
         if visit.intersection(choice) != set():
             continue
             
-        ret = os.system("{} ./output.c -I{}/runtime/ {} {} -o output 2>/dev/null 1>&2".format(compiler_name, root_dir, opt_option, optiter_to_str(choice)))
+        ret = compile(compiler_name, optiter_to_str(choice), "./output.c", "output")
         res = pintool("./output")
         info = compare.parse()
         if ret == 0 and oldinfo != info:
@@ -79,7 +84,10 @@ def select_trigger_options(compiler_name:str, oldinfo, choices:list, i:int):
     
     result = []
     for choice in choices:
-        ret = os.system("{} ./output.c -I{}/runtime/ {} {} -o output 2>/dev/null 1>&2".format(compiler_name, root_dir, opt_option, ' '.join(choice)))
+        is_main_opt = True if choice[0].startswith("-O") else False
+
+        ret = os.system("{} ./output.c -I{}/runtime/ {} {} -o output 2>/dev/null 1>&2".format(compiler_name, root_dir, "" if is_main_opt else default_option, ' '.join(choice)))
+        # print("{} ./output.c -I{}/runtime/ {} {} -o output 2>/dev/null 1>&2".format(compiler_name, root_dir, default_option, ' '.join(choice)))
         res = pintool("./output")
         info = compare.parse()
         if ret == 0 and oldinfo == info:
@@ -110,7 +118,7 @@ def select_heuristically(compiler_name:str, oldinfo, opt_list:list, limit:int, i
                     if live_ind != del_ind:
                         choice.append(opt_list[live_ind])
 
-                ret = os.system("{} ./output.c -I{}/runtime/ {} {} -o output 2>/dev/null 1>&2".format(compiler_name, root_dir, opt_option, optiter_to_str(choice)))
+                ret = compile(compiler_name, optiter_to_str(choice), "./output.c", "output")
                 res = pintool("./output")
                 info = compare.parse()
                 if ret == 0 and oldinfo != info:
@@ -188,7 +196,7 @@ class OptionMgr:
         # create null c file
         with open("c.c", "w") as cfile:
             cfile.writelines(["int main (){\n", "\treturn 0;\n", "}"])
-        os.system("{} c.c {} -mllvm -debug-pass=Arguments 2>{}.arguments".format(compiler_name, opt_option, compiler_name))
+        os.system("{} c.c {} -mllvm -debug-pass=Arguments 2>{}.arguments".format(compiler_name, default_option, compiler_name))
         with open("{}.arguments".format(compiler_name), "r") as clangf:
             lines = clangf.readlines()
         
@@ -229,7 +237,7 @@ class OptionMgr:
         # create null c file
         with open("c.c", "w") as cfile:
             cfile.writelines(["int main (){\n", "\treturn 0;\n", "}"])
-        os.system("{} c.c {} -fdump-passes 2>{}.passes".format(compiler_name, opt_option, compiler_name))
+        os.system("{} c.c {} -fdump-passes 2>{}.passes".format(compiler_name, default_option, compiler_name))
         with open("{}.passes".format(compiler_name), "r") as gccf:
             lines = gccf.readlines()
             lines = [line.rstrip() for line in lines]
@@ -331,7 +339,7 @@ class OptionMgr:
                 seq_str = ' '.join([option.name for option in seq])
                 
                 if self.compilerType == CompilerType.gcc or not self.using_opt:
-                    fail = os.system("{} -I{}/runtime/ c.c {} {} 2>/dev/null 1>&2".format(self.compiler_name, root_dir, seq_str, opt_option))
+                    fail = compile(self.compiler_name, seq_str, "c.c")
                 elif self.compilerType == CompilerType.clang:
                     fail = os.system("llvm-as </dev/null | {} {} -disable-output 2>/dev/null".format(self.compiler_name.replace("clang", "opt"), seq_str))
                     if not fail:
@@ -374,7 +382,7 @@ class OptionMgr:
         os.system("mkdir -p {}".format(workdir))
         os.chdir(workdir)
         os.system("cp {}/regression/caserepo/output{}.c ./output.c".format(root_dir, bug.id))
-        os.system("{} ./output.c {} -o output 2>/dev/null 1>&2".format(self.compiler_name, opt_option))
+        compile(self.compiler_name, "", "./output.c", "output")
         pintool("./output")
         oldinfo = compare.parse()
 
@@ -383,7 +391,7 @@ class OptionMgr:
         self.checkvalidation("./output.c", True)
         full_seq = self.getseq(True)
         invalid_seq = self.getseq(False)
-        ret = os.system("{} ./output.c -I{}/runtime/ {} {} -o output 2>/dev/null 1>&2".format(self.compiler_name, root_dir, opt_option, optiter_to_str(full_seq)))
+        ret = compile(self.compiler_name, optiter_to_str(full_seq), "./output.c", "output")
         res = pintool("./output")
         info = compare.parse()
         if ret != 0 or info == oldinfo:
@@ -453,7 +461,7 @@ class OptionMgr:
     1) get the oracle `info` and compilers and their options to be tested
     2) test their combinations from 1 to default_maxlength_comb
 '''
-def select_migration(bug, n = 1):
+def select_migration(bug, option_type, n = 1):
     
     if bug.compilerType != CompilerType.gcc:
         return
@@ -478,13 +486,21 @@ def select_migration(bug, n = 1):
     print("... testing {}".format(bug.id))
     
     for compiler_name in options_dict:
-        exist = os.system("which {}".format(compiler_name))
+        exist = os.system("which {} > /dev/null".format(compiler_name))
         if exist != 0:
             continue
         res_list = []
         pool = mp.Pool(n)
-        # choices = [[option] for option in options_dict[compiler_name]]
-        choices = [["-fno-" + option[2:]] for option in options_dict[compiler_name]]
+        if option_type == OptionType.f:
+            choices = [[option] for option in options_dict[compiler_name]]
+        elif option_type == OptionType.fno:
+            choices = [["-fno-" + option[2:]] for option in options_dict[compiler_name]]
+        elif option_type == OptionType.main:
+            main_opts = ["-O0", "-O1", "-O2", "-O3"]
+            main_opts.remove(default_option)
+            choices = [[opt] for opt in main_opts]
+        else:
+            choices = []
         # choices.extend(list(combinations(options_dict[compiler_name], 2)))
         choices_list = [[] for i in range(n)]
         for i, choice in enumerate(choices):

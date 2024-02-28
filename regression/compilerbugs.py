@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-opt_option=
+default_option=
 test_type=
 pin_root=
 root_dir=
@@ -12,7 +12,7 @@ from enum import Enum
 
 CompilerType = Enum("CompilerType", ("gcc", "clang", "both", "invalid"))
 
-def pintool(elf_path):
+def pintool(elf_path = "./a.out"):
     ''' -1: runtime error
         0:  no bug
         1:  has bug
@@ -21,6 +21,11 @@ def pintool(elf_path):
     if ret != 0:
         return -1
     ret = int(os.popen("cat ./result.out").read().strip())
+    return ret
+
+def compile(cp:str, extra_opt:str, src:str = './output.c', out:str = "a.out"):
+    opt_str = extra_opt if extra_opt.startswith("-O") else default_option + " " + extra_opt
+    ret = os.system("{} {} {} -I {}/runtime -o {} 2>/dev/null".format(cp, src, opt_str, root_dir, out))
     return ret
 
 class Bug:
