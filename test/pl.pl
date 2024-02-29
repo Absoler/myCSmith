@@ -68,7 +68,7 @@ if (Cwd::abs_path(getcwd()) ne "$root_dir/test") {
     system("cp $root_dir/test/target.c ./target.c");
 }
 my $stat;
-$stat = system("creduce --tidy --n 28 $root_dir/test/judgemany.kb target.c");
+$stat = system("creduce --tidy --n $core $root_dir/test/judgemany.kb target.c");
 if (Cwd::abs_path(getcwd()) ne "$root_dir/test") {
     system("cp target.c $root_dir/test/")
 }

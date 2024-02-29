@@ -268,6 +268,7 @@ if __name__ == "__main__":
     parser.add_argument("--reducegcc", "-rg", action="store_true", help="find the minimum option combination that blocks gcc bug")
     parser.add_argument("--reduceclang", "-rc", action="store_true", help="find the minimum option combination that blocks clang bug")
     parser.add_argument("--migrategcc", action="store_true")
+    parser.add_argument("--migrategccmain", action="store_true")
     args = parser.parse_args()
 
     if args.init:
@@ -310,6 +311,14 @@ if __name__ == "__main__":
             bugs = list(itertools.chain(*cp_bugs_map_gcc.values()))
         for bug in bugs:
             result = option.select_migration(bug, option.OptionType.main, nproc)
+        exit(0)
+
+    if args.migrategccmain:
+        if args.analyzegroup == -1:
+            bugs = list(bugs_map.keys())
+        else:
+            bugs = list(itertools.chain(*cp_bugs_map_gcc.values()))
+        result_list = option.select_migration_quick(bugs, nproc)
         exit(0)
 
     if args.testlocal:

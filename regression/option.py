@@ -95,6 +95,44 @@ def select_trigger_options(compiler_name:str, oldinfo, choices:list, i:int):
     
     return result
 
+# select trigger options for some bugs with all possible compilers, for quickly testing main option migration
+def select_trigger_options_bugs_cps(bugs:list, choices:list, i):
+    workdir = "{}/regression/select/{}".format(root_dir, i)
+    os.system("mkdir -p {}".format(workdir))
+    os.chdir(workdir)
+
+    result = {}
+    for bug in bugs:
+        result[bug.id] = {}
+        os.system("cp {}/regression/caserepo/output{}.c output.c".format(root_dir, bug.id))
+        
+        nocp = True
+
+        compiler_names = ["gcc-{}.2.0".format(v) for v in range(8, 14)]
+        existed_compiler_names = Compiler.uncompress(bug.compilerHash, CompilerType.gcc)
+        for exist_cp in existed_compiler_names:
+            if exist_cp in compiler_names:
+                compiler_names.remove(exist_cp)
+        for cp in compiler_names:
+            result[bug.id][cp] = []
+            nochoice = True
+            for choice in choices:
+                ret = compile(cp, ' '.join(choice))
+                res = pintool()
+                info = compare.parse()
+                if ret == 0 and info == bug.info:
+                    result[bug.id][cp].append(' '.join(choice))
+                    nochoice = False
+            
+            if nochoice:
+                result[bug.id].pop(cp)
+            else:
+                nocp = False
+        if nocp:
+            result.pop(bug.id)
+    
+    return result
+            
 def select_heuristically(compiler_name:str, oldinfo, opt_list:list, limit:int, i:int):
     workdir = "{}/regression/select/{}".format(root_dir, i)
     os.system("mkdir -p {}".format(workdir))
@@ -525,6 +563,43 @@ def select_migration(bug, option_type, n = 1):
 
     return result
 
+# quickly select migration on main flag (O0, O1..), divide by bugs not opts
+def select_migration_quick(bugs:list, n:int = 1):
+    if bugs[0].compilerType != CompilerType.gcc:
+        return
+    
+    workdir = "{}/regression/select".format(root_dir)
+    os.system("mkdir -p {}".format(workdir))
+    os.chdir(workdir)
+
+    arg_bugs_lst = [[] for i in range(n)]
+    for i in range(len(bugs)):
+        arg_bugs_lst[i%n].append(bugs[i])
+    
+    main_opts = ["-O0", "-O1", "-O2", "-O3"]
+    main_opts.remove(default_option)
+    choices = [[opt] for opt in main_opts]
+
+    res_list = []
+    if n > 1:
+        pool = mp.Pool(n)
+        for i in range(n):
+            res_list.append(pool.apply_async(select_trigger_options_bugs_cps, args=(arg_bugs_lst[i], choices, i)))
+        pool.close()
+        pool.join()
+    else:
+        res_list.append(select_trigger_options_bugs_cps(arg_bugs_lst[0], choices, 0))
+
+    res_list = [res.get() for res in res_list]
+    for res in res_list:
+        for num in res:
+            print("... testing {}".format(num))
+            for cp in res[num]:
+                print("{} can trigger with".format(cp))
+                for opt in res[num][cp]:
+                    print(opt)
+    
+    return res_list
 
 if __name__ == "__main__":
     caseid = int(sys.argv[1])
