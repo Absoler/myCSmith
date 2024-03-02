@@ -163,6 +163,26 @@ def validate(path:str):
             count[1] += 1
     print(count)
 
+''' init finaljson
+'''
+def convert_bugs_to_finaljson(bugs:list):
+    finaljson = []
+    for bug in bugs:
+        new_bug = {}
+        id = bug.id
+        info = bug.info
+        compilers = bugs[bug]
+        new_bug["id"] = id
+        new_bug["info"] = dict(info)
+        new_bug["conditions"] = {}
+        for compiler in compilers:
+            new_bug["conditions"][compiler] = {
+                "default" : True,
+                "extra_options" : []
+            }
+        finaljson.append(new_bug)
+        
+    return finaljson
 
 ########################################
 #                                      #
