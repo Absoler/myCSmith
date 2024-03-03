@@ -140,6 +140,7 @@ ExtensionMgr::OutputTail(ostream &out)
 void
 ExtensionMgr::OutputInit(std::ostream &out)
 {
+    out << "#pragma GCC optimize (\"O0\")" << endl;     // gcc will optimize `setReadCnt` at -O3, we should forbid it
 	if (ExtensionMgr::extension_ == NULL) {
 		if (CGOptions::accept_argc()) {
 			out << "int main (int argc, char* argv[])" << endl;

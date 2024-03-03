@@ -19,7 +19,7 @@ if [[ $1 =~ - ]] ; then
     fi
     ${1//+/ } output2.c -I $root_dir/runtime -gdwarf-4 $default_option -w -o output2
 else
-    if [ $# -lt 2 ] ; then echo "need input mount position!" ; fi
+    if [ $# -lt 2 ] ; then echo "need input mount position!" ; exit 1 ; fi
     cwd=`pwd`
     cwd_fromhost=$host_root_dir/${cwd##$2}
     docker run --rm -v $cwd_fromhost:/root -w /root $1 ${1%%:*} /root/output2.c $default_option -gdwarf-4 -o output2 2>/dev/null

@@ -791,10 +791,6 @@ void
 FactMgr::doFinalization()
 {
 	Fact::doFinalization();
-	for(Fact* fact:meta_facts){
-		FactPointTo* fp=(FactPointTo*)fact;
-		printf("1");
-	}
 	meta_facts.clear();
 }
 
